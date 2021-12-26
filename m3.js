@@ -1,8 +1,11 @@
-// import * as m1 from './m1.js';
+console.log(m1, '111');
+import * as m1 from './m1.js';
+
 // import m1Default from './m1.js';
 // import { a, b as bb } from './m1.js';
 
 // const tao = m1;
+
 
 // x.a = aaa;
 
@@ -20,7 +23,7 @@
 //   [m1Default]: a,
 // }
 
-// console.log(`object${m1}`);
+console.log(`object${m1}`);
 
 export const aa = 1, b = 2;
 export class abc {
@@ -32,7 +35,7 @@ export default aaa;
 
 export function a () {
   
-}
+};
 
 // export default [];
 
