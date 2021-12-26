@@ -1,0 +1,26 @@
+{
+  "name": "esm-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "http-server ./ -o",
+    "dev:w": "webpack serve --progress --mode=development"
+  },
+  "author": "imtaotao",
+  "dependencies": {
+    "@babel/core": "^7.15.8",
+    "@babel/generator": "^7.16.5",
+    "@babel/parser": "^7.16.6",
+    "@babel/traverse": "^7.16.5",
+    "@babel/types": "^7.16.0",
+    "babel-loader": "^8.2.2",
+    "html-webpack-plugin": "^5.3.2",
+    "webpack": "^5.58.2",
+    "webpack-cli": "^4.9.0",
+    "webpack-dev-server": "^4.3.1"
+  },
+  "devDependencies": {
+    "process": "^0.11.10"
+  }
+}
