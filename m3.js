@@ -22,13 +22,27 @@
 
 // console.log(`object${m1}`);
 
-// export const aa = 1, b = 2;
-export class abc {};
+export const aa = 1, b = 2;
+export class abc {
+  a() {}
+};
+
+const aaa = 1
+export default aaa;
+
+export function a () {
+  
+}
+
 // export default [];
 
-console.log(abc);
+console.log(aa);
 
 // export {
 //   m1Default as default,
 //   tao as tao1,
 // }
+
+// exports.a = class abc {
+//   a() {}
+// };
