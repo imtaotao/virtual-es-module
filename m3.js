@@ -2,9 +2,10 @@ import * as m1 from './m1.js';
 import m1Default from './m1.js';
 import { a, b as bb } from './m1.js';
 
+const aaa = 1;
 const tao = m1;
 
-m1.a = aaa;
+// m1.a = aaa;
 
 function fn() {
   console.log(bb, m1);
@@ -13,6 +14,7 @@ function fn() {
     console.log(m1);
   }
 }
+fn();
 
 class aaab {}
 
@@ -20,15 +22,14 @@ const obj = {
   [m1Default]: a,
 }
 
-console.log(`object${m1}`);
+console.log(`object${m1.a}`);
 
 export const aa = 1, b = 2;
 export class abc {
   a() {}
 };
 
-const aaa = 1
-export default aaa;
+// export default aaa;
 
 export function ab () {
   
@@ -36,11 +37,11 @@ export function ab () {
 
 // export default [];
 
-// export {
-//   m1Default as default,
-//   tao as tao1,
-// }
+export {
+  m1Default as default,
+  tao as tao1,
+}
 
-exports.a = class abc {
-  a() {}
-};
+export {
+  tao as tao2,
+}
