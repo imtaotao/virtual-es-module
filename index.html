@@ -14,7 +14,11 @@
   </script>
   <script type="virtual-module">
     import * as m from './m3.js';
-    console.log(m, 2);
+    import { aa } from './m3.js';
+    console.log(aa, 'index1');
+    setTimeout(() => {
+      console.log(aa, 'index2');
+    })
     // import('./m3.js').then(mm => {
     //   console.log(m === mm, mm, 22);
     // })

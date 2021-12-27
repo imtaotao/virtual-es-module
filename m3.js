@@ -24,7 +24,12 @@ const obj = {
 
 console.log(`object${m1.a}`);
 
-export const aa = 1, b = 2;
+export let aa = 1, b = 2;
+
+setTimeout(() => {
+  aa = 2;
+})
+
 export class abc {
   a() {}
 };
