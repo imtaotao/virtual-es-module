@@ -35,11 +35,9 @@ export function ab () {
   
 };
 
-// export default [];
-
 export {
-  m1Default as default,
-  tao as tao1,
+  m1 as default,
+  bb as tao1,
 }
 
 export {

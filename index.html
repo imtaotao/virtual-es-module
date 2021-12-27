@@ -8,14 +8,16 @@
 </head>
 <body>
   <script>
-    window.getCode = (url) => fetch(url).then(res => res.text());
     window.Buffer = {
       isBuffer: () => false,
     }
   </script>
-  <script type=module>
+  <script type="virtual-module">
     import * as m from './m3.js';
-    // console.log(m);
+    console.log(m, 2);
+    // import('./m3.js').then(mm => {
+    //   console.log(m === mm, mm, 22);
+    // })
   </script>
 </body>
 </html>
