@@ -13,6 +13,11 @@ Virtual es module for easy operation in the sandbox...
 <!DOCTYPE html>
 <html lang="en">
 <body>
+   <script>
+    // Add the environment required by babel
+    if (!globalThis.process) globalThis.process = {};
+    if (!globalThis.Buffer) globalThis.Buffer = { isBuffer: () => false };
+  </script>
   <script src="dist/virtual-esm.umd.js"></script>
   <script type="virtual-module">
     import * as m from './m.js';
