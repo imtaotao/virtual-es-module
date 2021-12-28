@@ -7,16 +7,14 @@
   <title>Document</title>
 </head>
 <body>
+  <script src="/dist/virtual-esm.umd.js"></script>
   <script>
-    window.Buffer = {
-      isBuffer: () => false,
-    }
+    console.log(VirtualModule);
   </script>
-  <script src="./dist/virtual-esm.umd.js"></script>
   <!-- virtual- -->
-  <script type="module">
-    import * as m from './test/m3.js';
-    import { aa } from './test/m3.js';
+  <script type="virtual-module">
+    import * as m from './m3.js';
+    import { aa } from './m3.js';
     console.log(aa, 'index1');
     setTimeout(() => {
       console.log(aa, 'index2');
@@ -25,9 +23,6 @@
     import('./test/m3.js').then(mm => {
       console.log(m === mm, mm, 22);
     })
-  </script>
-  <script>
-
   </script>
 </body>
 </html>

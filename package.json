@@ -1,6 +1,6 @@
 {
-  "name": "virtual-esm",
-  "version": "0.0.1",
+  "name": "virtual-es-module",
+  "version": "0.0.1-beta1",
   "description": "es module polyfill.",
   "types": "dist/src",
   "main": "dist/index.js",
@@ -11,6 +11,9 @@
     "format": "prettier --write --parser typescript \"src/*.(js|ts?(x))\""
   },
   "author": "imtaotao",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "dependencies": {
     "@babel/core": "^7.15.8",
     "@babel/generator": "^7.16.5",
