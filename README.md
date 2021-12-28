@@ -2,6 +2,12 @@
 
 Virtual es module for easy operation in the sandbox...
 
+## feature
+
+[x] `import` statement
+[x] `import()` statement
+[x] `import.meta`
+
 ## Demo
 
 ```html
@@ -11,6 +17,10 @@ Virtual es module for easy operation in the sandbox...
   <script type="virtual-module">
     import * as m from './m.js';
     console.log(m);
+  </script>
+  <script src="virtual-esm.umd.js"></script>
+  <script>
+    VirtualModule.startByScriptTag();
   </script>
 </body>
 </html>
