@@ -1,3 +1,4 @@
+import './polyfill';
 import { transform } from './compiler';
 import {
   execCode,

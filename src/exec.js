@@ -54,7 +54,7 @@ export function execCode(url, module, code, map) {
     async (id) => {
       if (!moduleStore[id]) {
         await compileAndFetchCode(id, url);
-        const { code, map, url } = moduleResource[id];
+        const { code, map } = moduleResource[id];
         const module = (moduleStore[id] = {});
         execCode(id, module, code, map);
       }

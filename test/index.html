@@ -9,9 +9,12 @@
 <body>
   <script src="/dist/virtual-esm.umd.js"></script>
   <script>
-    console.log(VirtualModule);
+    document.addEventListener('DOMContentLoaded', () => {
+      VirtualModule.startByScriptTag();
+    })
   </script>
-  <!-- virtual- -->
+
+  <!-- virtual -->
   <script type="virtual-module">
     import * as m from './m3.js';
     import { aa } from './m3.js';

@@ -1,12 +1,13 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.1-beta1",
+  "version": "0.0.1-beta.2",
   "description": "es module polyfill.",
   "types": "dist/src",
   "main": "dist/index.js",
   "module": "dist/virtual-esm.esm-bundler.js",
   "scripts": {
     "build": "rollup --config",
+    "serve": "http-server ./",
     "dev": "rollup --config -w | http-server ./",
     "format": "prettier --write --parser typescript \"src/*.(js|ts?(x))\""
   },

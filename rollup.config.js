@@ -59,10 +59,13 @@ function createConfig(format, output) {
       ];
 
   // 有可能引用外部包，但是外部包有可能没有 esm 版本
-  const nodePlugins =
-    format !== 'cjs'
-      ? [nodeResolve({ preferBuiltins: false }), commonjs({ sourceMap: false })]
-      : [];
+  let nodePlugins = [];
+  if (format !== 'cjs') {
+    nodePlugins = [
+      nodeResolve({ preferBuiltins: false, browser: true }),
+      commonjs({ sourceMap: false }),
+    ];
+  }
 
   const tsPlugin = ts({
     check: true,

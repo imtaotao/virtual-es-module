@@ -23,7 +23,9 @@ Virtual es module for easy operation in the sandbox...
   </script>
   <script src="virtual-esm.umd.js"></script>
   <script>
-    VirtualModule.startByScriptTag();
+    document.addEventListener('DOMContentLoaded', () => {
+      VirtualModule.startByScriptTag();
+    })
   </script>
 </body>
 </html>
