@@ -14,8 +14,18 @@
   <script src="/dist/virtual-esm.umd.js"></script>
 
   <!-- virtual -->
+  <!-- <script type="virtual-module">
+    import * as _ from 'https://unpkg.com/lodash-es'
+
+    console.log(_);
+  </script> -->
+  <!-- <script type="module"> -->
   <script type="virtual-module">
-    import * as m from './m3.js';
+    import * as m from './m4.js';
+    import dd from './m4.js'
+    import {d} from './m4.js'
+    import './m4.js'
+    console.log(m);
     import { aa } from './m3.js';
     console.log(aa, 'index1');
     setTimeout(() => {

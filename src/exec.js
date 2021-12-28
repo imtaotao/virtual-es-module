@@ -21,6 +21,7 @@ export function importModule(id) {
 }
 
 export function execCode(url, module, code, map) {
+  // console.log(code);
   const content = btoa(JSON.stringify(map));
   const sourcemap = `\n//@ sourceMappingURL=data:application/json;base64,${content}`;
   const exportModule = (exportObject) => {
@@ -43,7 +44,7 @@ export function execCode(url, module, code, map) {
     return wrapperModule;
   };
 
-  (0, eval)(`${code}${sourcemap}`);
+  (0, eval)(`${code}${''}`);
   const actuator = globalThis[__VIRTUAL_WRAPPER__];
 
   actuator(
@@ -71,14 +72,17 @@ export function compileAndFetchCode(curModule, baseUrl) {
   const p = fetch(url)
     .then((res) => res.text())
     .then(async (code) => {
-      const { imports, output } = transform({ code, filename: curModule });
-      output.url = url;
-      moduleResource[curModule] = output;
-      return Promise.all(
-        imports.map(({ moduleName }) =>
-          compileAndFetchCode(moduleName, curModule),
-        ),
+      const { imports, exports, generateCode } = transform({
+        code,
+        filename: curModule,
+      });
+      await Promise.all(
+        imports.map(({ moduleId }) => compileAndFetchCode(moduleId, curModule)),
       );
+      const output = generateCode();
+      output.url = url;
+      output.exports = exports;
+      moduleResource[curModule] = output;
     });
   moduleResource[curModule] = p;
   return p;

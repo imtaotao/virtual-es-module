@@ -3,6 +3,7 @@ Virtual es module for easy operation in the sandbox...
 ## Feature
 
 - [x] `import`
+- [x] `export`
 - [x] `import()`
 - [x] `import.meta`
 - [x] `Circular reference`

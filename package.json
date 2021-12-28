@@ -1,6 +1,6 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.1-beta.4",
+  "version": "0.0.1-beta.5",
   "description": "es module polyfill.",
   "types": "dist/src",
   "main": "index.js",
@@ -11,6 +11,7 @@
     "dev": "rollup --config -w | http-server ./",
     "format": "prettier --write --parser typescript \"src/*.(js|ts?(x))\""
   },
+  "license": "MIT",
   "author": "imtaotao",
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
