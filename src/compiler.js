@@ -346,6 +346,7 @@ export function transform(opts) {
     // 生成转换后的代码
     createVirtualModuleApi(ast, importInfos, exportInfos);
     createWrapperFunction(ast);
+
     return generate(
       ast,
       {
