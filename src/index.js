@@ -26,13 +26,16 @@ export async function startByCode(originCode, filename) {
   execCode(filename, module, code, map);
 }
 
-export function startByScriptTag() {
-  const nodes = document.querySelectorAll('script');
-  for (const node of nodes) {
-    const type = node.getAttribute('type');
-    if (type === 'virtual-module') {
-      const url = node.getAttribute('src');
-      url ? startByUrl(url) : startByCode(node.innerHTML, location.href);
+// 如果是在浏览器环境中，则直接执行代码
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const nodes = document.querySelectorAll('script');
+    for (const node of nodes) {
+      const type = node.getAttribute('type');
+      if (type === 'virtual-module') {
+        const url = node.getAttribute('src');
+        url ? startByUrl(url) : startByCode(node.innerHTML, location.href);
+      }
     }
-  }
+  });
 }

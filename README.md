@@ -13,20 +13,13 @@ Virtual es module for easy operation in the sandbox...
 <!DOCTYPE html>
 <html lang="en">
 <body>
+  <script src="dist/virtual-esm.umd.js"></script>
   <script type="virtual-module">
     import * as m from './m.js';
     console.log(m);
 
     import('./m.js').then(mm => {
       console.log(m === mm); // true
-    })
-  </script>
-
-  <!-- Start -->
-  <script src="virtual-esm.umd.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      VirtualModule.startByScriptTag();
     })
   </script>
 </body>
