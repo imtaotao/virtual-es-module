@@ -19,10 +19,10 @@ export async function startByCode(originCode, filename) {
   const { imports, output } = transform({ filename, code: originCode });
   moduleResource[filename] = output;
   await Promise.all(
-    imports.map(({ moduleName }) => compileAndFetchCode(moduleName, filename))
-  )
+    imports.map(({ moduleName }) => compileAndFetchCode(moduleName, filename)),
+  );
   const { code, map } = output;
-  const module = moduleStore[filename] = {};
+  const module = (moduleStore[filename] = {});
   execCode(filename, module, code, map);
 }
 
@@ -36,5 +36,3 @@ export function startByScriptTag() {
     }
   }
 }
-
-startByScriptTag();

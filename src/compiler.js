@@ -1,5 +1,5 @@
 import * as t from '@babel/types';
-import { parse }from '@babel/parser';
+import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
 
@@ -18,9 +18,7 @@ function importInformation(node) {
     const isSpecial = isDefault || isNamespace;
     const alias = isSpecial ? null : n.local.name;
     // https://doc.esdoc.org/github.com/mason-lang/esast/function/index.html#static-function-identifier
-    const name = isSpecial
-      ? n.local.name
-      : n.imported.name;
+    const name = isSpecial ? n.local.name : n.imported.name;
     return {
       name,
       isDefault,
@@ -36,17 +34,18 @@ function importInformation(node) {
 
 function hasUseEsmVars(path, compare) {
   let scope = path.context.scope;
-  const hasUse = (scope) => Object.keys(scope.bindings).some(key => {
-    const { kind, referencePaths, constantViolations} = scope.bindings[key];
-    if (kind === 'module') {
-      if (compare) return compare(referencePaths);
-      if (referencePaths.some((item) => item.node === path.node)) {
-        return true;
+  const hasUse = (scope) =>
+    Object.keys(scope.bindings).some((key) => {
+      const { kind, referencePaths, constantViolations } = scope.bindings[key];
+      if (kind === 'module') {
+        if (compare) return compare(referencePaths);
+        if (referencePaths.some((item) => item.node === path.node)) {
+          return true;
+        }
+        return constantViolations.some(({ node }) => node.left === path.node);
       }
-      return constantViolations.some(({ node }) => node.left === path.node);
-    }
-  })
-  while(scope) {
+    });
+  while (scope) {
     if (hasUse(scope)) return true;
     scope = scope.parent;
   }
@@ -66,7 +65,7 @@ function createVirtualModuleApi(ast, importInfos, exportInfos) {
   );
   ast.program.body.unshift(
     exportCallExpression,
-    ...importInfos.map(val => val.transformNode),
+    ...importInfos.map((val) => val.transformNode),
   );
 }
 
@@ -78,14 +77,14 @@ function createWrapperFunction(ast) {
     __VIRTUAL_NAMESPACE__,
     __VIRTUAL_IMPORT_META__,
     __VIRTUAL_DYNAMIC_IMPORT__,
-  ].map(key => t.identifier(key));
+  ].map((key) => t.identifier(key));
   const left = t.memberExpression(
     t.identifier('globalThis'),
     t.identifier(__VIRTUAL_WRAPPER__),
   );
   const fnDirectives = t.directive(t.directiveLiteral('use strict'));
-  const fnBody = body.map(node => {
-    return t.isExpression(node) ? t.expressionStatement(node) : node
+  const fnBody = body.map((node) => {
+    return t.isExpression(node) ? t.expressionStatement(node) : node;
   });
   const right = t.functionExpression(
     null,
@@ -104,7 +103,7 @@ export function transform(opts) {
   const exportSpecifiers = new Set();
   const identifierChanges = new Set();
   const ast = parse(opts.code, { sourceType: 'module' });
-  
+
   const refModule = (refName) => {
     for (const { data } of importInfos) {
       for (let i = 0; i < data.imports.length; i++) {
@@ -114,26 +113,25 @@ export function transform(opts) {
         }
       }
     }
-  }
+  };
 
   const importReplaceNode = (name) => {
     const { i, data } = refModule(name) || {};
     if (data) {
       const item = data.imports[i];
       if (item.isNamespace) {
-        return t.callExpression(
-          t.identifier(__VIRTUAL_NAMESPACE__),
-          [t.identifier(data.transformModuleName)],
-        )
+        return t.callExpression(t.identifier(__VIRTUAL_NAMESPACE__), [
+          t.identifier(data.transformModuleName),
+        ]);
       } else {
-        const propName = item.isDefault ? 'default' : item.name; 
+        const propName = item.isDefault ? 'default' : item.name;
         return t.memberExpression(
           t.identifier(data.transformModuleName),
           t.identifier(propName),
         );
       }
     }
-  }
+  };
 
   // 收集信息
   traverse(ast, {
@@ -149,7 +147,7 @@ export function transform(opts) {
       const varNode = t.variableDeclarator(
         t.identifier(transformModuleName),
         dynamicMethodNode,
-      )
+      );
       const transformNode = t.variableDeclaration('const', [varNode]);
       data.transformModuleName = transformModuleName;
       importInfos.push({
@@ -189,7 +187,7 @@ export function transform(opts) {
       const change = () => {
         const replaceNode = importReplaceNode(node.name);
         replaceNode && path.replaceWith(replaceNode);
-      }
+      };
       identifierChanges.add(change);
     },
 
@@ -202,8 +200,8 @@ export function transform(opts) {
       const nodes = t.isVariableDeclaration(declaration)
         ? declaration.declarations
         : [declaration];
-      
-      nodes.forEach(node => {
+
+      nodes.forEach((node) => {
         let name, refNode;
         if (isDefault) {
           name = 'default';
@@ -213,7 +211,7 @@ export function transform(opts) {
           refNode = t.identifier(name);
         }
         exportInfos.push({ name, refNode });
-      })
+      });
 
       if (isDefault) {
         const varName = t.identifier(__VIRTUAL_DEFAULT__);
@@ -229,17 +227,19 @@ export function transform(opts) {
     // export 特殊声明
     ExportSpecifier(path) {
       const { local, exported } = path.node;
-      const refNode = hasUseEsmVars(path, (refs) => refs.some(p => p.node === local))
+      const refNode = hasUseEsmVars(path, (refs) =>
+        refs.some((p) => p.node === local),
+      )
         ? importReplaceNode(local.name)
         : t.identifier(local.name);
       exportSpecifiers.add(path.parentPath);
       exportInfos.push({ refNode, name: exported.name });
     },
-  })
+  });
 
   // 删除原生的 es module 代码（顺序很重要）
-  identifierChanges.forEach(fn => fn());
-  exportSpecifiers.forEach(path => path.remove());
+  identifierChanges.forEach((fn) => fn());
+  exportSpecifiers.forEach((path) => path.remove());
   importInfos.forEach(({ remove }) => remove());
 
   // 生成转换后的代码
@@ -259,6 +259,6 @@ export function transform(opts) {
   );
   return {
     output,
-    imports: importInfos.map(v => v.data),
+    imports: importInfos.map((v) => v.data),
   };
 }

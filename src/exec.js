@@ -14,7 +14,7 @@ function transformUrl(resolvePath, curPath) {
 export function importModule(id) {
   if (!moduleStore[id]) {
     const { code, map, url } = moduleResource[id];
-    const module = moduleStore[id] = {};
+    const module = (moduleStore[id] = {});
     execCode(url, module, code, map);
   }
   return moduleStore[id];
@@ -24,15 +24,15 @@ export function execCode(url, module, code, map) {
   const content = btoa(JSON.stringify(map));
   const sourcemap = `\n//@ sourceMappingURL=data:application/json;base64,${content}`;
   const exportModule = (exportObject) => {
-    Object.keys(exportObject).forEach(key => {
+    Object.keys(exportObject).forEach((key) => {
       Object.defineProperty(module, key, {
         enumerable: true,
         get: exportObject[key],
-        set: () => { 
+        set: () => {
           throw new TypeError('Assignment to constant variable.');
         },
-      })
-    })
+      });
+    });
   };
   const getModuleNamespace = (module) => {
     if (namespaceStore.has(module)) {
@@ -55,11 +55,11 @@ export function execCode(url, module, code, map) {
       if (!moduleStore[id]) {
         await compileAndFetchCode(id, url);
         const { code, map, url } = moduleResource[id];
-        const module = moduleStore[id] = {};
+        const module = (moduleStore[id] = {});
         execCode(id, module, code, map);
       }
       return getModuleNamespace(moduleStore[id]);
-    }
+    },
   );
 }
 
@@ -67,19 +67,19 @@ export function compileAndFetchCode(curModule, baseUrl) {
   if (moduleResource[curModule]) {
     return moduleResource[curModule];
   }
-  const url = baseUrl
-    ? transformUrl(baseUrl, curModule)
-    : curModule;
+  const url = baseUrl ? transformUrl(baseUrl, curModule) : curModule;
   const p = fetch(url)
-    .then(res => res.text())
-    .then(async code => {
+    .then((res) => res.text())
+    .then(async (code) => {
       const { imports, output } = transform({ code, filename: curModule });
       output.url = url;
       moduleResource[curModule] = output;
       return Promise.all(
-        imports.map(({ moduleName }) => compileAndFetchCode(moduleName, curModule))
-      )
-  });
+        imports.map(({ moduleName }) =>
+          compileAndFetchCode(moduleName, curModule),
+        ),
+      );
+    });
   moduleResource[curModule] = p;
   return p;
 }

@@ -1,0 +1,11 @@
+/node_modules
+/src
+/test
+.gitignore
+.npmignore
+.prettierrc
+index.html
+rollup.config.js
+tsconfig.json
+.DS_Store
+yarn.lock

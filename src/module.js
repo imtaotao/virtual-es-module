@@ -1,4 +1,4 @@
-function Module() {};
+function Module() {}
 export function createNamespaceModule(module) {
   const cloned = new Module();
   Object.setPrototypeOf(cloned, null);
@@ -7,8 +7,8 @@ export function createNamespaceModule(module) {
     writable: false,
     enumerable: false,
     configurable: false,
-  })
-  Object.keys(module).forEach(key => {
+  });
+  Object.keys(module).forEach((key) => {
     const getter = Object.getOwnPropertyDescriptor(module, key).get;
     Object.defineProperty(cloned, key, {
       enumerable: true,
@@ -18,9 +18,9 @@ export function createNamespaceModule(module) {
         throw TypeError(
           `Cannot assign to read only property '${key}' of object '[object Module]`,
         );
-      }
-    })
-  })
+      },
+    });
+  });
   Object.seal(cloned);
   return cloned;
 }
@@ -33,9 +33,9 @@ export function createImportMeta(url) {
       writable: true,
       enumerable: true,
       configurable: true,
-    })
-  }
+    });
+  };
   set('url', url);
   set('__virtual', true);
-  return { meta: metaObject }
+  return { meta: metaObject };
 }
