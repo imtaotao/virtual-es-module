@@ -4,9 +4,13 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Create by imtaotao</title>
 </head>
 <body>
+  <script>
+    globalThis.process = {};
+    globalThis.Buffer = { isBuffer: () => false };
+  </script>
   <script src="/dist/virtual-esm.umd.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -23,7 +27,7 @@
       console.log(aa, 'index2');
     })
 
-    import('./test/m3.js').then(mm => {
+    import('./m3.js').then(mm => {
       console.log(m === mm, mm, 22);
     })
   </script>

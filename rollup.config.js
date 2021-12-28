@@ -51,18 +51,11 @@ function createConfig(format, output) {
   const isProductionBuild = /\.prod\.js$/.test(output.file);
   if (isUmdBuild) output.name = 'VirtualModule';
 
-  const external = isUmdBuild
-    ? []
-    : [
-        ...Object.keys(pkg.dependencies || {}),
-        ...Object.keys(pkg.peerDependencies || {}),
-      ];
-
   // 有可能引用外部包，但是外部包有可能没有 esm 版本
   let nodePlugins = [];
   if (format !== 'cjs') {
     nodePlugins = [
-      nodeResolve({ preferBuiltins: false, browser: true }),
+      nodeResolve({ browser: isUmdBuild }),
       commonjs({ sourceMap: false }),
     ];
   }
@@ -78,6 +71,13 @@ function createConfig(format, output) {
       },
     },
   });
+
+  const external = isUmdBuild
+    ? []
+    : [
+        ...Object.keys(pkg.dependencies || {}),
+        ...Object.keys(pkg.peerDependencies || {}),
+      ];
 
   return {
     input,

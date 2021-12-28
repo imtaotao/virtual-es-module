@@ -1,4 +1,3 @@
-import './polyfill';
 import { transform } from './compiler';
 import {
   execCode,
@@ -9,14 +8,14 @@ import {
 } from './exec';
 
 export async function startByUrl(entry) {
-  if (!entry) throw new Error('Miss entry');
+  if (!entry) throw new Error('Missing entry');
   await compileAndFetchCode(entry);
   importModule(entry);
 }
 
 export async function startByCode(originCode, filename) {
-  if (!originCode) throw new Error('Miss code');
-  if (!filename) throw new Error('Miss filename');
+  if (!originCode) throw new Error('Missing code');
+  if (!filename) throw new Error('Missing filename');
   const { imports, output } = transform({ filename, code: originCode });
   moduleResource[filename] = output;
   await Promise.all(
