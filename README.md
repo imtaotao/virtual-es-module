@@ -5,7 +5,7 @@ Virtual es module for easy operation in the sandbox...
 - [x] `import`
 - [x] `import()`
 - [x] `import.meta`
-- [x] Circular reference
+- [x] `Circular reference`
 
 ## Demo
 
@@ -21,6 +21,8 @@ Virtual es module for easy operation in the sandbox...
       console.log(m === mm); // true
     })
   </script>
+
+  <!-- Start -->
   <script src="virtual-esm.umd.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
