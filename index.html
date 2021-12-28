@@ -12,8 +12,9 @@
       isBuffer: () => false,
     }
   </script>
+  <!-- virtual- -->
   <script type="virtual-module">
-    import * as m from './m3.js';
+    import * as m from './m3.js?a=1';
     import { aa } from './m3.js';
     console.log(aa, 'index1');
     setTimeout(() => {

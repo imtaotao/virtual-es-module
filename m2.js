@@ -22,3 +22,5 @@ setTimeout(() => {
   console.log(m1.a, aa);
   console.log(aa, 'aa');
 })
+
+console.log(import.meta, 'cccc');

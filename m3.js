@@ -48,3 +48,6 @@ export {
 export {
   tao as tao2,
 }
+
+console.log('-------');
+console.log(import.meta);
