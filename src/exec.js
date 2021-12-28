@@ -21,7 +21,6 @@ export function importModule(id) {
 }
 
 export function execCode(url, module, code, map) {
-  // console.log(code);
   const content = btoa(JSON.stringify(map));
   const sourcemap = `\n//@ sourceMappingURL=data:application/json;base64,${content}`;
   const exportModule = (exportObject) => {
@@ -44,7 +43,7 @@ export function execCode(url, module, code, map) {
     return wrapperModule;
   };
 
-  (0, eval)(`${code}${''}`);
+  (0, eval)(`${code}${sourcemap}`);
   const actuator = globalThis[__VIRTUAL_WRAPPER__];
 
   actuator(

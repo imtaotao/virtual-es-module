@@ -4,13 +4,17 @@ import traverse from '@babel/traverse';
 import generate from '@babel/generator';
 import { moduleResource } from './exec';
 
+export const __VIRTUAL_WRAPPER__ = '__VIRTUAL_WRAPPER__';
 const __VIRTUAL_IMPORT__ = '__VIRTUAL_IMPORT__';
 const __VIRTUAL_EXPORT__ = '__VIRTUAL_EXPORT__';
 const __VIRTUAL_DEFAULT__ = '__VIRTUAL_DEFAULT__';
 const __VIRTUAL_NAMESPACE__ = '__VIRTUAL_NAMESPACE__';
 const __VIRTUAL_IMPORT_META__ = '__VIRTUAL_IMPORT_META__';
 const __VIRTUAL_DYNAMIC_IMPORT__ = '__VIRTUAL_DYNAMIC_IMPORT__';
-export const __VIRTUAL_WRAPPER__ = '__VIRTUAL_WRAPPER__';
+
+function childModuleExports(moduleId) {
+  return moduleResource[moduleId].exports;
+}
 
 function importInformation(node) {
   const imports = node.specifiers.map((n) => {
@@ -50,15 +54,28 @@ function importInformationBySource(node) {
   };
 }
 
+function checkImportNames(imports, moduleId) {
+  const exports = childModuleExports(moduleId);
+  imports.forEach(item => {
+    if (item.isNamespace) return;
+    const checkName = item.isDefault ? 'default' : item.name;
+    if (!exports.includes(checkName)) {
+      throw SyntaxError(
+        `The module '${moduleId}' does not provide an export named '${checkName}'`,
+      )
+    }
+  })
+}
+
 function hasUseEsmVars(scope, node) {
   const hasUse = (scope) =>
     Object.keys(scope.bindings).some((key) => {
-      const { kind, referencePaths, constantViolations } = scope.bindings[key];
-      if (kind === 'module') {
-        if (referencePaths.some((item) => item.node === node)) {
+      const varItem = scope.bindings[key];
+      if (varItem.kind === 'module') {
+        if (varItem.referencePaths.some((item) => item.node === node)) {
           return true;
         }
-        return constantViolations.some(({ node }) => node.left === node);
+        return varItem.constantViolations.some(({ node }) => node.left === node);
       }
     });
   while (scope) {
@@ -68,10 +85,9 @@ function hasUseEsmVars(scope, node) {
   return false;
 }
 
-function createImportTransformNode(moduleName, url) {
-  const dynamicMethodNode = t.callExpression(t.identifier(__VIRTUAL_IMPORT__), [
-    t.stringLiteral(url),
-  ]);
+function createImportTransformNode(moduleName, moduleId) {
+  const importMethod = t.identifier(__VIRTUAL_IMPORT__);
+  const dynamicMethodNode = t.callExpression(importMethod, [t.stringLiteral(moduleId)]);
   const varNode = t.variableDeclarator(
     t.identifier(moduleName),
     dynamicMethodNode,
@@ -124,11 +140,15 @@ function createWrapperFunction(ast) {
 }
 
 export function transform(opts) {
-  let moduleId = 0;
+  let moduleCount = 0;
   const importInfos = [];
   const exportInfos = [];
-  const exportNamespaces = [];
-  const identifierChanges = new Set();
+  const deferQueue = {
+    importChecks: new Set(),
+    importRemoves: new Set(),
+    identifierRefs: new Set(),
+    exportNamespaces: new Set(),
+  }
   const ast = parse(opts.code, { sourceType: 'module' });
 
   const refModule = (refName) => {
@@ -142,7 +162,7 @@ export function transform(opts) {
     }
   };
 
-  // 替换为 `__mo__.default`;
+  // 替换为 `__mo__.x`;
   const importReplaceNode = (name) => {
     const { i, data } = refModule(name) || {};
     if (data) {
@@ -162,25 +182,19 @@ export function transform(opts) {
   };
 
   // 收集信息
-  console.log(ast);
-
   // https://262.ecma-international.org/7.0/#prod-ImportedBinding
   traverse(ast, {
     // 静态 import
     ImportDeclaration(path) {
       const { node } = path;
+      const moduleId = node.source.value;
       const data = importInformation(node);
-      const moduleName = `__m${moduleId++}__`;
-      const transformNode = createImportTransformNode(
-        moduleName,
-        node.source.value,
-      );
+      const moduleName = `__m${moduleCount++}__`;
+      const transformNode = createImportTransformNode(moduleName, moduleId);
       data.moduleName = moduleName;
-      importInfos.push({
-        data,
-        transformNode,
-        remove: () => path.remove(),
-      });
+      importInfos.push({ data, transformNode });
+      deferQueue.importRemoves.add(() => path.remove());
+      deferQueue.importChecks.add(() => checkImportNames(data.imports, moduleId));
     },
 
     // 动态 import
@@ -214,7 +228,7 @@ export function transform(opts) {
         const replaceNode = importReplaceNode(node.name);
         replaceNode && path.replaceWith(replaceNode);
       };
-      identifierChanges.add(change);
+      deferQueue.identifierRefs.add(change);
     },
 
     // export 声明
@@ -252,14 +266,13 @@ export function transform(opts) {
       } else if (specifiers) {
         const { source } = node;
         if (source) {
-          const moduleName = `__m${moduleId++}__`;
+          const moduleId =  source.value
+          const moduleName = `__m${moduleCount++}__`;
           const data = importInformationBySource(node);
-          const transformNode = createImportTransformNode(
-            moduleName,
-            source.value,
-          );
+          const transformNode = createImportTransformNode(moduleName, moduleId);
           data.moduleName = moduleName;
           importInfos.push({ data, transformNode });
+          deferQueue.importChecks.add(() => checkImportNames(data.imports, moduleId));
           specifiers.forEach((n) => {
             let refName;
             if (t.isExportNamespaceSpecifier(n)) {
@@ -280,37 +293,34 @@ export function transform(opts) {
         }
         path.remove();
       } else if (t.isExportAllDeclaration(node)) {
-        const { value } = node.source;
-        const moduleName = `__m${moduleId++}__`;
+        const moduleId = node.source.value;
+        const moduleName = `__m${moduleCount++}__`;
         const data = importInformationBySource(node);
-        const transformNode = createImportTransformNode(moduleName, value);
+        const transformNode = createImportTransformNode(moduleName, moduleId);
         data.moduleName = moduleName;
         importInfos.push({ data, transformNode });
-
-        const defer = (names) => {
-          names.forEach((name) => {
-            const refNode = t.memberExpression(
-              t.identifier(moduleName),
-              t.identifier(name),
-            );
-            exportInfos.push({ refNode, name });
-          });
-        };
-
-        exportNamespaces.push({
-          defer,
-          moduleId: value,
-        });
         path.remove();
+
+        deferQueue.exportNamespaces.add({
+          moduleId,
+          fn: (names) => {
+            names.forEach((name) => {
+              const refNode = t.memberExpression(
+                t.identifier(moduleName),
+                t.identifier(name),
+              );
+              exportInfos.push({ refNode, name });
+            });
+          },
+        });
       }
     },
   });
 
   function generateCode() {
     const nameCounts = {};
-    exportNamespaces.forEach(({ moduleId }) => {
-      const { exports } = moduleResource[moduleId];
-      exports.forEach((name) => {
+    deferQueue.exportNamespaces.forEach(({ moduleId }) => {
+      childModuleExports(moduleId).forEach((name) => {
         if (!nameCounts[name]) {
           nameCounts[name] = 1;
         } else {
@@ -319,19 +329,19 @@ export function transform(opts) {
       });
     });
 
-    exportNamespaces.forEach(({ defer, moduleId }) => {
-      let { exports } = moduleResource[moduleId];
-      // export namespace 变量的去重
-      exports = exports.filter((name) => {
+    deferQueue.exportNamespaces.forEach(({ fn, moduleId }) => {
+      // `export namespace` 变量的去重
+      const exports = childModuleExports(moduleId).filter((name) => {
         if (name === 'default') return false;
         if (nameCounts[name] > 1) return false;
         return exportInfos.every((val) => val.name !== name);
       });
-      defer(exports);
+      fn(exports);
     });
 
-    identifierChanges.forEach((fn) => fn());
-    importInfos.forEach(({ remove }) => remove && remove());
+    deferQueue.importChecks.forEach((fn) => fn());
+    deferQueue.identifierRefs.forEach((fn) => fn());
+    deferQueue.importRemoves.forEach((fn) => fn());
 
     // 生成转换后的代码
     createVirtualModuleApi(ast, importInfos, exportInfos);
