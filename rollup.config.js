@@ -1,6 +1,5 @@
 import path from 'path';
 import json from '@rollup/plugin-json';
-import ts from 'rollup-plugin-typescript2';
 import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -44,40 +43,28 @@ function createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild) {
 }
 
 function createConfig(format, output) {
-  output.externalLiveBindings = false;
+  let external = [];
+  let nodePlugins = [];
   const input = path.resolve(__dirname, 'src/index.js');
   const isUmdBuild = /umd/.test(format);
   const isBundlerESMBuild = /esm-bundler/.test(format);
   const isProductionBuild = /\.prod\.js$/.test(output.file);
-  if (isUmdBuild) output.name = 'VirtualModule';
 
-  // 有可能引用外部包，但是外部包有可能没有 esm 版本
-  let nodePlugins = [];
+  output.externalLiveBindings = false;
+  if (isUmdBuild) output.name = 'VirtualModule';
+  
   if (format !== 'cjs') {
     nodePlugins = [
       nodeResolve({ browser: isUmdBuild }),
       commonjs({ sourceMap: false }),
     ];
   }
-
-  const tsPlugin = ts({
-    check: true,
-    tsconfig: path.resolve(__dirname, 'tsconfig.json'),
-    cacheRoot: path.resolve(__dirname, 'node_modules/.rts2_cache'),
-    tsconfigOverride: {
-      exclude: ['**/__tests__'],
-      compilerOptions: {
-        declaration: true,
-      },
-    },
-  });
-
-  const external = isUmdBuild
-    ? []
-    : [
-        ...Object.keys(pkg.dependencies || {}),
-        ...Object.keys(pkg.peerDependencies || {}),
-      ];
+  if (!isUmdBuild) {
+    external = [
+      ...Object.keys(pkg.dependencies || {}),
+      ...Object.keys(pkg.peerDependencies || {}),
+    ];
+  }
 
   return {
     input,
@@ -87,7 +74,6 @@ function createConfig(format, output) {
       json({
         namedExports: false,
       }),
-      tsPlugin,
       createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild),
       ...nodePlugins,
     ],
