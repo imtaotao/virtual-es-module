@@ -9,7 +9,7 @@
     "build": "rollup --config",
     "serve": "http-server ./",
     "dev": "rollup --config -w | http-server ./",
-    "format": "prettier --write --parser typescript \"src/*.(js|ts?(x))\""
+    "format": "prettier --write --parser typescript \"(byAcorn|byBabel)/*.(js|ts?(x))\""
   },
   "license": "MIT",
   "author": "imtaotao",
@@ -21,7 +21,10 @@
     "@babel/generator": "^7.16.5",
     "@babel/parser": "^7.16.6",
     "@babel/traverse": "^7.16.5",
-    "@babel/types": "^7.16.0"
+    "@babel/types": "^7.16.0",
+    "acorn": "^8.7.0",
+    "acorn-walk": "^8.2.0",
+    "escodegen": "^2.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.0.1",

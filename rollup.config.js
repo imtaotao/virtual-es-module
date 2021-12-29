@@ -4,7 +4,7 @@ import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
-const byBabel = true;
+const byBabel = false;
 const outputConfigs = {
   cjs: {
     format: 'cjs',
