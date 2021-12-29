@@ -21,6 +21,7 @@
   </script> -->
   <!-- <script type="module"> -->
   <script type="virtual-module">
+    console.log(import.meta);
     import * as m from './m4.js';
     import dd from './m4.js'
     import {d} from './m4.js'
@@ -35,6 +36,11 @@
     import('./m3.js').then(mm => {
       console.log(m === mm, mm, 22);
     })
+  </script>
+
+  <script type="virtual-module">
+    import dd from './m4.js'
+    console.log(dd, 'script');
   </script>
 </body>
 </html>

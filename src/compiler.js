@@ -56,15 +56,15 @@ function importInformationBySource(node) {
 
 function checkImportNames(imports, moduleId) {
   const exports = childModuleExports(moduleId);
-  imports.forEach(item => {
+  imports.forEach((item) => {
     if (item.isNamespace) return;
     const checkName = item.isDefault ? 'default' : item.name;
     if (!exports.includes(checkName)) {
       throw SyntaxError(
         `The module '${moduleId}' does not provide an export named '${checkName}'`,
-      )
+      );
     }
-  })
+  });
 }
 
 function hasUseEsmVars(scope, node) {
@@ -75,7 +75,9 @@ function hasUseEsmVars(scope, node) {
         if (varItem.referencePaths.some((item) => item.node === node)) {
           return true;
         }
-        return varItem.constantViolations.some(({ node }) => node.left === node);
+        return varItem.constantViolations.some(
+          ({ node }) => node.left === node,
+        );
       }
     });
   while (scope) {
@@ -87,7 +89,9 @@ function hasUseEsmVars(scope, node) {
 
 function createImportTransformNode(moduleName, moduleId) {
   const importMethod = t.identifier(__VIRTUAL_IMPORT__);
-  const dynamicMethodNode = t.callExpression(importMethod, [t.stringLiteral(moduleId)]);
+  const dynamicMethodNode = t.callExpression(importMethod, [
+    t.stringLiteral(moduleId),
+  ]);
   const varNode = t.variableDeclarator(
     t.identifier(moduleName),
     dynamicMethodNode,
@@ -148,7 +152,7 @@ export function transform(opts) {
     importRemoves: new Set(),
     identifierRefs: new Set(),
     exportNamespaces: new Set(),
-  }
+  };
   const ast = parse(opts.code, { sourceType: 'module' });
 
   const refModule = (refName) => {
@@ -194,7 +198,9 @@ export function transform(opts) {
       data.moduleName = moduleName;
       importInfos.push({ data, transformNode });
       deferQueue.importRemoves.add(() => path.remove());
-      deferQueue.importChecks.add(() => checkImportNames(data.imports, moduleId));
+      deferQueue.importChecks.add(() =>
+        checkImportNames(data.imports, moduleId),
+      );
     },
 
     // 动态 import
@@ -266,13 +272,15 @@ export function transform(opts) {
       } else if (specifiers) {
         const { source } = node;
         if (source) {
-          const moduleId =  source.value
+          const moduleId = source.value;
           const moduleName = `__m${moduleCount++}__`;
           const data = importInformationBySource(node);
           const transformNode = createImportTransformNode(moduleName, moduleId);
           data.moduleName = moduleName;
           importInfos.push({ data, transformNode });
-          deferQueue.importChecks.add(() => checkImportNames(data.imports, moduleId));
+          deferQueue.importChecks.add(() =>
+            checkImportNames(data.imports, moduleId),
+          );
           specifiers.forEach((n) => {
             let refName;
             if (t.isExportNamespaceSpecifier(n)) {

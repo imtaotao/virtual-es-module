@@ -1,11 +1,5 @@
 import { transform } from './compiler';
-import {
-  execCode,
-  importModule,
-  moduleStore,
-  moduleResource,
-  compileAndFetchCode,
-} from './exec';
+import { execCode, importModule, compileAndFetchCode } from './exec';
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');
@@ -13,9 +7,11 @@ export async function startByUrl(entry) {
   importModule(entry);
 }
 
-export async function startByCode(originCode, filename) {
+export async function startByCode(originCode, filename, metaUrl) {
   if (!originCode) throw new Error('Missing code');
   if (!filename) throw new Error('Missing filename');
+  if (!metaUrl) metaUrl = filename;
+
   const { imports, exports, generateCode } = transform({
     filename,
     code: originCode,
@@ -26,22 +22,38 @@ export async function startByCode(originCode, filename) {
   const output = generateCode();
   output.url = filename;
   output.exports = exports;
-  moduleResource[filename] = output;
   const { code, map } = output;
-  const module = (moduleStore[filename] = {});
-  execCode(filename, module, code, map);
+  const module = {};
+  execCode(metaUrl, module, code, map);
 }
 
 export function startByScriptTags(typeFlag) {
   if (!typeFlag) throw new Error('Missing typeFlag');
+
+  const getFilename = (i) => {
+    const url = new URL(location.href);
+    const parts = url.pathname.split('/');
+    const last = parts[parts.length - 1];
+    if (!last || (!last.includes('.') && last !== 'index')) {
+      parts.push(`index(js:${i})`);
+    }
+    url.pathname = parts.join('/');
+    return url.toString();
+  };
+
   const ready = () => {
     const nodes = document.getElementsByTagName('script');
-    for (const node of nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
       const type = node.getAttribute('type');
       if (type === typeFlag && !node.loaded) {
         node.loaded = true;
         const url = node.getAttribute('src');
-        url ? startByUrl(url) : startByCode(node.innerHTML, location.href);
+        if (url) {
+          startByUrl(url);
+        } else {
+          startByCode(node.innerHTML, getFilename(i), location.href);
+        }
       }
     }
   };
