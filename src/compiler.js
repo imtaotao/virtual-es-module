@@ -2,7 +2,7 @@ import * as t from '@babel/types';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
-import { moduleResource } from './exec';
+import { moduleResource } from './execCode';
 
 export const __VIRTUAL_WRAPPER__ = '__VIRTUAL_WRAPPER__';
 const __VIRTUAL_IMPORT__ = '__VIRTUAL_IMPORT__';

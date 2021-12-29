@@ -1,5 +1,5 @@
 import { transform } from './compiler';
-import { execCode, importModule, compileAndFetchCode } from './exec';
+import { execCode, importModule, compileAndFetchCode } from './execCode';
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');
