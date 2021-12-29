@@ -14,10 +14,10 @@
   <script src="/dist/virtual-esm.umd.js"></script>
 
   <!-- virtual -->
-  <!-- <script type="virtual-module">
+  <!-- <script type="module">
     import * as _ from 'https://unpkg.com/lodash-es'
 
-    console.log(_);
+    console.log(_, 'loadsh');
   </script> -->
   <!-- <script type="module"> -->
   <script type="virtual-module">
@@ -39,8 +39,13 @@
   </script>
 
   <script type="virtual-module">
-    import dd from './m4.js'
-    console.log(dd, 'script');
+    import * as m6 from './m6.js';
+    import { a } from './m6.js';
+
+    console.log(m6.a, a);
+    setTimeout(() => {
+      console.log(m6.a, a);
+    })
   </script>
 </body>
 </html>

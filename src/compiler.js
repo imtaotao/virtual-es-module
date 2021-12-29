@@ -112,7 +112,7 @@ function createVirtualModuleApi(ast, importInfos, exportInfos) {
   );
   ast.program.body.unshift(
     exportCallExpression,
-    ...importInfos.map((val) => val.transformNode),
+    ...new Set(importInfos.map((val) => val.transformNode)),
   );
 }
 
@@ -166,6 +166,15 @@ export function transform(opts) {
     }
   };
 
+  const findImportInfo = (moduleId) => {
+    for (const info of importInfos) {
+      if (info.data.moduleId === moduleId) {
+        return [info.data.moduleName, info.transformNode];
+      }
+    }
+    return [];
+  };
+
   // 替换为 `__mo__.x`;
   const importReplaceNode = (name) => {
     const { i, data } = refModule(name) || {};
@@ -193,8 +202,11 @@ export function transform(opts) {
       const { node } = path;
       const moduleId = node.source.value;
       const data = importInformation(node);
-      const moduleName = `__m${moduleCount++}__`;
-      const transformNode = createImportTransformNode(moduleName, moduleId);
+      let [moduleName, transformNode] = findImportInfo(moduleId);
+      if (!moduleName) {
+        moduleName = `__m${moduleCount++}__`;
+        transformNode = createImportTransformNode(moduleName, moduleId);
+      }
       data.moduleName = moduleName;
       importInfos.push({ data, transformNode });
       deferQueue.importRemoves.add(() => path.remove());
@@ -273,9 +285,12 @@ export function transform(opts) {
         const { source } = node;
         if (source) {
           const moduleId = source.value;
-          const moduleName = `__m${moduleCount++}__`;
           const data = importInformationBySource(node);
-          const transformNode = createImportTransformNode(moduleName, moduleId);
+          let [moduleName, transformNode] = findImportInfo(moduleId);
+          if (!moduleName) {
+            moduleName = `__m${moduleCount++}__`;
+            transformNode = createImportTransformNode(moduleName, moduleId);
+          }
           data.moduleName = moduleName;
           importInfos.push({ data, transformNode });
           deferQueue.importChecks.add(() =>
@@ -302,9 +317,12 @@ export function transform(opts) {
         path.remove();
       } else if (t.isExportAllDeclaration(node)) {
         const moduleId = node.source.value;
-        const moduleName = `__m${moduleCount++}__`;
         const data = importInformationBySource(node);
-        const transformNode = createImportTransformNode(moduleName, moduleId);
+        let [moduleName, transformNode] = findImportInfo(moduleId);
+        if (!moduleName) {
+          moduleName = `__m${moduleCount++}__`;
+          transformNode = createImportTransformNode(moduleName, moduleId);
+        }
         data.moduleName = moduleName;
         importInfos.push({ data, transformNode });
         path.remove();
