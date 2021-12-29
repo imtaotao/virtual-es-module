@@ -11,13 +11,13 @@ function transformUrl(resolvePath, curPath) {
   return realPath.href;
 }
 
-export function importModule(id) {
-  if (!moduleStore[id]) {
-    const { code, map, url } = moduleResource[id];
-    const module = (moduleStore[id] = {});
+export function importModule(moduleId) {
+  if (!moduleStore[moduleId]) {
+    const { code, map, url } = moduleResource[moduleId];
+    const module = (moduleStore[moduleId] = {});
     execCode(url, module, code, map);
   }
-  return moduleStore[id];
+  return moduleStore[moduleId];
 }
 
 export function execCode(url, module, code, map) {
@@ -43,7 +43,7 @@ export function execCode(url, module, code, map) {
     return wrapperModule;
   };
 
-  (0, eval)(`${code}${sourcemap}`);
+  (0, eval)(`${code}\n//${url}${sourcemap}`);
   const actuator = globalThis[__VIRTUAL_WRAPPER__];
 
   actuator(
@@ -67,16 +67,19 @@ export function compileAndFetchCode(curModule, baseUrl) {
   if (moduleResource[curModule]) {
     return moduleResource[curModule];
   }
-  const url = baseUrl ? transformUrl(baseUrl, curModule) : curModule;
+  let url = baseUrl ? transformUrl(baseUrl, curModule) : curModule;
   const p = fetch(url)
-    .then((res) => res.text())
+    .then((res) => {
+      url = res.url; // 可能重定向了
+      return res.text();
+    })
     .then(async (code) => {
       const { imports, exports, generateCode } = transform({
         code,
         filename: curModule,
       });
       await Promise.all(
-        imports.map(({ moduleId }) => compileAndFetchCode(moduleId, curModule)),
+        imports.map(({ moduleId }) => compileAndFetchCode(moduleId, url)),
       );
       const output = generateCode();
       output.url = url;

@@ -33,6 +33,7 @@ function importInformation(node) {
   });
   return {
     imports,
+    isExport: false,
     moduleId: node.source.value,
   };
 }
@@ -50,6 +51,7 @@ function importInformationBySource(node) {
   });
   return {
     imports,
+    isExport: true,
     moduleId: node.source.value,
   };
 }
@@ -88,14 +90,11 @@ function hasUseEsmVars(scope, node) {
 }
 
 function createImportTransformNode(moduleName, moduleId) {
-  const importMethod = t.identifier(__VIRTUAL_IMPORT__);
-  const dynamicMethodNode = t.callExpression(importMethod, [
+  const varName = t.identifier(moduleName);
+  const varExpr = t.callExpression(t.identifier(__VIRTUAL_IMPORT__), [
     t.stringLiteral(moduleId),
   ]);
-  const varNode = t.variableDeclarator(
-    t.identifier(moduleName),
-    dynamicMethodNode,
-  );
+  const varNode = t.variableDeclarator(varName, varExpr);
   return t.variableDeclaration('const', [varNode]);
 }
 
@@ -155,13 +154,20 @@ export function transform(opts) {
   };
   const ast = parse(opts.code, { sourceType: 'module' });
 
+  const findIndxInData = (refName, data) => {
+    for (let i = 0; i < data.imports.length; i++) {
+      const { name, alias } = data.imports[i];
+      if (refName === alias || refName === name) {
+        return { i, data };
+      }
+    }
+  };
+
   const refModule = (refName) => {
-    for (const { data } of importInfos) {
-      for (let i = 0; i < data.imports.length; i++) {
-        const { name, alias } = data.imports[i];
-        if (refName === alias || refName === name) {
-          return { i, data };
-        }
+    for (const { data, isExport } of importInfos) {
+      if (!isExport) {
+        const res = findIndxInData(refName, data);
+        if (res) return res;
       }
     }
   };
@@ -176,8 +182,9 @@ export function transform(opts) {
   };
 
   // 替换为 `__mo__.x`;
-  const importReplaceNode = (name) => {
-    const { i, data } = refModule(name) || {};
+  const importReplaceNode = (nameOrInfo) => {
+    const { i, data } =
+      typeof nameOrInfo === 'string' ? refModule(nameOrInfo) : nameOrInfo;
     if (data) {
       const item = data.imports[i];
       if (item.isNamespace) {
@@ -303,7 +310,8 @@ export function transform(opts) {
             } else {
               refName = n.local.name;
             }
-            const refNode = importReplaceNode(refName);
+            const useInfo = findIndxInData(refName, data);
+            const refNode = importReplaceNode(useInfo);
             exportInfos.push({ refNode, name: n.exported.name });
           });
         } else {

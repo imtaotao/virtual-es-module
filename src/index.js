@@ -17,10 +17,10 @@ export async function startByCode(originCode, filename, metaUrl) {
     code: originCode,
   });
   await Promise.all(
-    imports.map(({ moduleId }) => compileAndFetchCode(moduleId, filename)),
+    imports.map(({ moduleId }) => compileAndFetchCode(moduleId, metaUrl)),
   );
   const output = generateCode();
-  output.url = filename;
+  output.url = metaUrl;
   output.exports = exports;
   const { code, map } = output;
   const module = {};
@@ -55,7 +55,7 @@ export async function startByScriptTags(typeFlag) {
       execQueue.push(exec);
     }
   }
-  execQueue.forEach(exec => exec());
+  execQueue.forEach((exec) => exec());
 }
 
 // 如果是在浏览器环境中，则直接执行代码
