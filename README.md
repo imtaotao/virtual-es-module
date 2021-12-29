@@ -21,6 +21,9 @@ Virtual es module for easy operation in the sandbox...
   </script>
   <script src="dist/virtual-esm.umd.js"></script>
   <script type="virtual-module">
+    import * as _ from 'https://unpkg.com/lodash-es';
+    console.log(_);
+
     import * as m from './m.js';
     console.log(m);
 
