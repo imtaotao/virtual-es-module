@@ -4,6 +4,7 @@ import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
+const byBabel = true;
 const outputConfigs = {
   cjs: {
     format: 'cjs',
@@ -45,10 +46,10 @@ function createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild) {
 function createConfig(format, output) {
   let external = [];
   let nodePlugins = [];
-  const input = path.resolve(__dirname, 'src/index.js');
   const isUmdBuild = /umd/.test(format);
   const isBundlerESMBuild = /esm-bundler/.test(format);
   const isProductionBuild = /\.prod\.js$/.test(output.file);
+  const input = path.resolve(__dirname, `${byBabel ? 'byBabel' : 'byAcorn'}/index.js`);
 
   output.externalLiveBindings = false;
   if (isUmdBuild) output.name = 'VirtualModule';
