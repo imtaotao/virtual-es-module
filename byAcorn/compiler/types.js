@@ -1,5 +1,6 @@
 // From `@babel/types`
 // https://babeljs.io/docs/en/babel-parser
+// 过滤掉 ts, jsx 相关的代码判断，并将判断修正为 estree 的规范
 
 function shallowEqual(actual, expected) {
   const keys = Object.keys(expected);
@@ -20,6 +21,20 @@ export function isVar(node) {
   return isVariableDeclaration(node, { kind: 'var' });
 }
 
+export function isLet(node) {
+  return isVariableDeclaration(node) && node.kind !== 'var';
+}
+
+export function isBlockScoped(node) {
+  return isFunctionDeclaration(node) || isClassDeclaration(node) || isLet(node);
+}
+
+export function isForXStatement(node) {
+  if (!node) return false;
+  const nodeType = node.type;
+  return 'ForInStatement' === nodeType || 'ForOfStatement' === nodeType;
+}
+
 export function isBlockStatement(node) {
   if (!node) return false;
   return node.type === 'BlockStatement';
@@ -29,19 +44,6 @@ export function isObjectMethod(node) {
   if (!node) return false;
   if (node.type !== 'Property') return false;
   return isFunction(node.value);
-}
-
-export function isVariableDeclaration(node, opts) {
-  if (!node) return false;
-  const nodeType = node.type;
-  if (nodeType === 'VariableDeclaration') {
-    if (typeof opts === 'undefined') {
-      return true;
-    } else {
-      return shallowEqual(node, opts);
-    }
-  }
-  return false;
 }
 
 export function isFunction(node) {
@@ -136,6 +138,64 @@ export function isScope(node, parent) {
     return true;
   }
   return isScopable(node);
+}
+
+export function isFunctionDeclaration(node) {
+  if (!node) return false;
+  return node.type === 'FunctionDeclaration';
+}
+
+export function isVariableDeclaration(node, opts) {
+  if (!node) return false;
+  const nodeType = node.type;
+  if (nodeType === 'VariableDeclaration') {
+    if (typeof opts === 'undefined') {
+      return true;
+    } else {
+      return shallowEqual(node, opts);
+    }
+  }
+  return false;
+}
+
+export function isClassDeclaration(node) {
+  if (!node) return false;
+  return node.type === 'ClassDeclaration';
+}
+
+export function isExportDeclaration(node) {
+  if (!node) return false;
+  const nodeType = node.type;
+  if (
+    'ExportAllDeclaration' === nodeType ||
+    'ExportDefaultDeclaration' === nodeType ||
+    'ExportNamedDeclaration' === nodeType
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isImportDeclaration(node) {
+  if (!node) return false;
+  return node.type === 'ImportDeclaration';
+}
+
+export function isDeclaration(node) {
+  if (!node) return false;
+  const nodeType = node.type;
+  if (
+    'FunctionDeclaration' === nodeType ||
+    'VariableDeclaration' === nodeType ||
+    'ClassDeclaration' === nodeType ||
+    'ExportAllDeclaration' === nodeType ||
+    'ExportDefaultDeclaration' === nodeType ||
+    'ExportNamedDeclaration' === nodeType ||
+    'ImportDeclaration' === nodeType
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function isReferenced(node, parent, grandparent) {

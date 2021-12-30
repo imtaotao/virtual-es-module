@@ -1,11 +1,17 @@
+// From `@babel/traverse`
 import { base } from 'acorn-walk';
 import {
   isVar,
-  isIdentifier,
-  isProgram,
   isScope,
+  isProgram,
+  isIdentifier,
   isReferenced,
+  isBlockScoped,
+  isDeclaration,
+  isForXStatement,
   isFunctionParent,
+  isImportDeclaration,
+  isExportDeclaration,
 } from './types';
 
 class Scope {
@@ -24,6 +30,10 @@ class Scope {
       this.references[name] = { kind, node };
     }
   }
+
+  registerDeclaration(node) {
+
+  }
 }
 
 const collectorVisitor = {
@@ -41,9 +51,17 @@ const collectorVisitor = {
     }
   },
 
-  Declaration(node, state, ancestors) {},
+  Declaration(node, state, ancestors) {
+    if (isBlockScoped(node)) return;
+    if (isImportDeclaration(node)) return;
+    if (isExportDeclaration(node)) return;
+    const scope = state.getFunctionParent(ancestors) || state.getProgramParent(ancestors);
+    scope.registerDeclaration(node);
+  },
 
   ImportDeclaration(node, state, ancestors) {},
+
+  ExportDeclaration(node, state, ancestors) {},
 
   ForXStatement(node, state, ancestors) {},
 
@@ -64,13 +82,22 @@ const collectorVisitor = {
   ClassExpression(node, state, ancestors) {},
 };
 
+const virtualTypes = {
+  Declaration: isDeclaration,
+  ForXStatement: isForXStatement,
+};
+const virtualTypesKeys = Object.keys(virtualTypes);
+
 function scopeAncestor(node, visitors, state) {
   const ancestors = [];
   const baseVisitor = base;
   function c(node, st, override) {
     const type = override || node.type;
+    const virtualType = virtualTypesKeys.find((k) => virtualTypes[k](node));
     const found = visitors[type];
+    const virtualFound = visitors[virtualType];
     const isNew = node !== ancestors[ancestors.length - 1];
+
     if (isNew) ancestors.push(node);
     if (type === node.type) {
       if (isProgram(node) || isScope(node)) {
@@ -81,6 +108,7 @@ function scopeAncestor(node, visitors, state) {
     }
     baseVisitor[type](node, st, c);
     if (found) found(node, st || ancestors, ancestors);
+    if (virtualFound) virtualFound(node, st || ancestors, ancestors);
     if (isNew) ancestors.pop();
   }
   c(node, state);
