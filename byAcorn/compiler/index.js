@@ -1,6 +1,7 @@
 import { Parser } from 'acorn';
-import * as walk from 'acorn-walk';
-import { moduleResource } from './execCode';
+import { ancestor } from 'acorn-walk';
+import { createState } from './state';
+import { moduleResource } from '../execCode';
 
 export const __VIRTUAL_WRAPPER__ = '__VIRTUAL_WRAPPER__';
 const __VIRTUAL_IMPORT__ = '__VIRTUAL_IMPORT__';
@@ -13,13 +14,15 @@ const __VIRTUAL_DYNAMIC_IMPORT__ = '__VIRTUAL_DYNAMIC_IMPORT__';
 export function transform(opts) {
   const parser = new Parser({ sourceType: 'module' }, opts.code);
   const ast = parser.parse();
-  console.log(ast, parser);
+  console.log(ast);
+  const state = createState(ast);
+  console.log(state);
 
-  walk.ancestor(ast, {
-    ImportDeclaration(node, state) {
-      console.log(node, state);
-    },
-  });
+  // ancestor(ast, {
+  //   ImportDeclaration(node, state, ancestors) {
+  //     console.log(node, state);
+  //   }, null, state
+  // })
 
   function generateCode() {}
 

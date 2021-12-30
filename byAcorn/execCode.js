@@ -1,4 +1,4 @@
-import { transform, __VIRTUAL_WRAPPER__ } from './compiler';
+import { transform, __VIRTUAL_WRAPPER__ } from './compiler/index';
 import { createImportMeta, createNamespaceModule } from './module';
 
 const namespaceStore = new WeakMap();

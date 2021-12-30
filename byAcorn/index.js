@@ -1,4 +1,4 @@
-import { transform } from './compiler';
+import { transform } from './compiler/index';
 import { execCode, importModule, compileAndFetchCode } from './execCode';
 
 export async function startByUrl(entry) {

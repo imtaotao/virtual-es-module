@@ -2,8 +2,19 @@ import * as m1 from './m1.js';
 import m1Default from './m1.js';
 import { a, b as bb } from './m1.js';
 
+export * as xx from './m1.js'
+export { name as t } from './m1.js' 
+
+import('./m1').then(() => {})
+
+var ct = 1;
 const aaa = 1;
 const tao = m1;
+
+let [ac, bc] = [];
+for (var i = 0; i < 1; i++) {
+
+}
 
 // m1.a = aaa;
 

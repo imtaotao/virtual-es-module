@@ -9,7 +9,7 @@
     "build": "rollup --config",
     "serve": "http-server ./",
     "dev": "rollup --config -w | http-server ./",
-    "format": "prettier --write --parser typescript \"(byAcorn|byBabel)/*.(js|ts?(x))\""
+    "format": "prettier --write --parser typescript \"(byAcorn|byBabel)/**/*.(js|ts?(x))\""
   },
   "license": "MIT",
   "author": "imtaotao",
