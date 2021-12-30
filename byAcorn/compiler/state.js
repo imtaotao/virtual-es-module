@@ -31,9 +31,7 @@ class Scope {
     }
   }
 
-  registerDeclaration(node) {
-
-  }
+  registerDeclaration(node) {}
 }
 
 const collectorVisitor = {
@@ -55,7 +53,8 @@ const collectorVisitor = {
     if (isBlockScoped(node)) return;
     if (isImportDeclaration(node)) return;
     if (isExportDeclaration(node)) return;
-    const scope = state.getFunctionParent(ancestors) || state.getProgramParent(ancestors);
+    const scope =
+      state.getFunctionParent(ancestors) || state.getProgramParent(ancestors);
     scope.registerDeclaration(node);
   },
 
@@ -93,8 +92,8 @@ function scopeAncestor(node, visitors, state) {
   const baseVisitor = base;
   function c(node, st, override) {
     const type = override || node.type;
-    const virtualType = virtualTypesKeys.find((k) => virtualTypes[k](node));
     const found = visitors[type];
+    const virtualType = virtualTypesKeys.find((k) => virtualTypes[k](node));
     const virtualFound = visitors[virtualType];
     const isNew = node !== ancestors[ancestors.length - 1];
 
