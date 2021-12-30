@@ -117,34 +117,24 @@ export function createState(ast) {
   const state = {
     scopes: new WeakMap(),
 
-    getScope(ancestors) {
-      let i = ancestors.length;
-      while (~--i) {
-        const node = ancestors[i];
-        if (this.scopes.has(node)) {
-          return this.scopes.get(node);
-        }
-      }
-    },
-
     getFunctionParent(ancestors) {
-      let i = ancestors.length;
-      while (~--i) {
-        const node = ancestors[i];
-        if (this.scopes.has(node)) {
-          if (isFunctionParent(node)) {
-            return this.scopes.get(node);
-          }
-        }
-      }
+      return this.getScope(ancestors, isFunctionParent);
     },
 
     getProgramParent(ancestors) {
+      return this.getScope(ancestors, isProgram);
+    },
+
+    getScope(ancestors, condition) {
       let i = ancestors.length;
       while (~--i) {
         const node = ancestors[i];
         if (this.scopes.has(node)) {
-          if (isProgram(node)) {
+          if (condition) {
+            if (condition(node)) {
+              return this.scopes.get(node);
+            }
+          } else {
             return this.scopes.get(node);
           }
         }
