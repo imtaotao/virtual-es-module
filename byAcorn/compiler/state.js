@@ -4,25 +4,56 @@ import {
   isVar,
   isScope,
   isProgram,
+  isPattern,
   isIdentifier,
   isReferenced,
   isBlockScoped,
   isDeclaration,
+  isBlockParent,
   isForXStatement,
   isFunctionParent,
+  isLabeledStatement,
+  isClassDeclaration,
   isImportDeclaration,
   isExportDeclaration,
+  isFunctionExpression,
+  isVariableDeclaration,
+  isFunctionDeclaration,
 } from './types';
 
+// type Kind =
+//  | "var" /* var declarator */
+//  | "let" /* let declarator, class declaration id, catch clause parameters */
+//  | "const" /* const declarator */
+//  | "module" /* import specifiers */
+//  | "hoisted" /* function declaration id */
+//  | "param" /* function declaration parameters */
+//  | "local" /* function expression id, class expression id */
+//  | "unknown"; /* export specifiers */
 class Scope {
-  constructor(node) {
+  constructor(node, parent, state) {
     this.node = node;
+    this.state = state;
+    this.parent = parent;
     this.references = {};
-    this.constantViolations = {};
+    this.labels = new Map();
+    this.constantViolations = new Set();
   }
 
-  addReference(kind, name, node) {
-    if (this.references[name]) {
+  get isTopLevel() {
+    return isProgram(this.node);
+  }
+
+  registerLabel(node) {
+    this.labels.set(node.label.name, node);
+  }
+
+  registerBinding(kind, name, node) {
+    if (!kind) throw new ReferenceError('no `kind`');
+    const binding = this.references[name];
+    if (binding) {
+      // 遍历的时候会有重复塞入
+      if (binding.node === node) return;
       if (kind !== 'param') {
         throw new Error(`Duplicate declaration "${name}"`);
       }
@@ -31,58 +62,142 @@ class Scope {
     }
   }
 
-  registerDeclaration(node) {}
+  // @babel/types/src/retrievers/getBindingIdentifiers.ts
+  registerDeclaration(node) {
+    if (isLabeledStatement(node)) {
+      this.registerLabel(node);
+    } else if (isFunctionDeclaration(node)) {
+      this.registerBinding('hoisted', node.id.name, node);
+    } else if (isVariableDeclaration(node)) {
+      const declar = node.declarations;
+      for (const decl of declar) {
+        // node.kind 有 var, let, const
+        this.registerBinding(node.kind, decl.id.name, decl);
+      }
+    } else if (isClassDeclaration(node)) {
+      if (node.declare) return;
+      this.registerBinding('let', node.id.name, node);
+    } else if (isImportDeclaration(node)) {
+      const specifiers = node.specifiers;
+      for (const specifier of specifiers) {
+        this.registerBinding('module', specifier.local.name, specifier);
+      }
+    } else if (isExportDeclaration(node)) {
+      const declar = node.declaration;
+      if (
+        isClassDeclaration(declar) ||
+        isFunctionDeclaration(declar) ||
+        isVariableDeclaration(declar)
+      ) {
+        this.registerDeclaration(declar);
+      }
+    } else {
+      this.registerBinding('unknown', node.exported.name, node);
+    }
+  }
 }
 
 const collectorVisitor = {
   // for (var i = 0; ...) {}
-  ForStatement(node, state, ancestors) {
+  ForStatement(node, state) {
     const { init } = node;
     if (isVar(init)) {
-      const scope =
-        state.getFunctionParent(ancestors) || state.getProgramParent(ancestors);
-      for (const declar of init.declarations) {
-        if (isIdentifier(declar.id)) {
-          scope.addReference('var', declar.id.name, declar);
+      const scope = state.scopes.get(node);
+      const parent =
+        state.getFunctionParent(scope) || state.getProgramParent(scope);
+      for (const decl of init.declarations) {
+        if (isIdentifier(decl.id)) {
+          parent.registerBinding('var', decl.id.name, decl);
         }
       }
     }
   },
 
-  Declaration(node, state, ancestors) {
+  Declaration(node, state) {
     if (isBlockScoped(node)) return;
     if (isImportDeclaration(node)) return;
     if (isExportDeclaration(node)) return;
-    const scope =
-      state.getFunctionParent(ancestors) || state.getProgramParent(ancestors);
-    scope.registerDeclaration(node);
+    const scope = state.scopes.get(node);
+    const parent =
+      state.getFunctionParent(scope) || state.getProgramParent(scope);
+    parent.registerDeclaration(node);
   },
 
-  ImportDeclaration(node, state, ancestors) {},
+  BlockScoped(node, state) {
+    let scope = state.scopes.get(node);
+    if (scope.node === node) scope = scope.parent;
+    const parent = state.getBlockParent(scope);
+    parent.registerDeclaration(node);
+  },
 
-  ExportDeclaration(node, state, ancestors) {},
+  ImportDeclaration(node, state) {
+    const scope = state.scopes.get(node);
+    const parent = state.getBlockParent(scope);
+    parent.registerDeclaration(node);
+  },
 
-  ForXStatement(node, state, ancestors) {},
+  ForXStatement(node, state) {
+    const scope = state.scopes.get(node);
+    const { left } = node;
+    if (isPattern(left) || isIdentifier(left)) {
+      scope.constantViolations.add(node);
+    } else if (isVar(left)) {
+      const parentScope =
+        state.getFunctionParent(scope) || state.getProgramParent(scope);
+      parentScope.registerBinding('var', left, left);
+    }
+  },
 
-  LabeledStatement(node, state, ancestors) {},
+  LabeledStatement(node, state) {
+    const scope = state.scopes.get(node);
+    const parent = state.getBlockParent(scope);
+    parent.registerDeclaration(node);
+  },
 
-  AssignmentExpression(node, state, ancestors) {},
+  UpdateExpression(node, state) {
+    const scope = state.scopes.get(node);
+    scope.constantViolations.add(node);
+  },
 
-  UpdateExpression(node, state, ancestors) {},
+  UnaryExpression(node, state) {
+    if (node.operator === 'delete') {
+      const scope = state.scopes.get(node);
+      scope.constantViolations.add(node);
+    }
+  },
 
-  UnaryExpression(node, state, ancestors) {},
+  CatchClause(node, state) {
+    const scope = state.scopes.get(node);
+    scope.registerBinding('let', node.param.name, node);
+  },
 
-  BlockScoped(node, state, ancestors) {},
+  Function(node, state) {
+    const { params } = node;
+    const scope = state.scopes.get(node);
+    for (const param of params) {
+      scope.registerBinding('param', param.name, param);
+    }
+    // Register function expression id after params. When the id
+    // collides with a function param, the id effectively can't be
+    // referenced: here we registered it as a constantViolation
+    if (isFunctionExpression(node) && node.id) {
+      scope.registerBinding('local', id.name, node);
+    }
+  },
 
-  CatchClause(node, state, ancestors) {},
-
-  Function(node, state, ancestors) {},
-
-  ClassExpression(node, state, ancestors) {},
+  ClassExpression(node, state) {
+    const { id } = node;
+    const scope = state.scopes.get(node);
+    if (id) {
+      scope.registerBinding('local', id.name, node);
+    }
+  },
 };
 
+// 虚拟 types
 const virtualTypes = {
   Declaration: isDeclaration,
+  BlockScoped: isBlockScoped,
   ForXStatement: isForXStatement,
 };
 const virtualTypesKeys = Object.keys(virtualTypes);
@@ -90,55 +205,50 @@ const virtualTypesKeys = Object.keys(virtualTypes);
 function scopeAncestor(node, visitors, state) {
   const ancestors = [];
   const baseVisitor = base;
-  function c(node, st, override) {
+  const call = (node, st, override) => {
     const type = override || node.type;
     const found = visitors[type];
-    const virtualType = virtualTypesKeys.find((k) => virtualTypes[k](node));
-    const virtualFound = visitors[virtualType];
     const isNew = node !== ancestors[ancestors.length - 1];
+    const isCurrentNode = type === node.type;
+    const virtualFnKeys = virtualTypesKeys.filter((k) => virtualTypes[k](node));
 
     if (isNew) ancestors.push(node);
-    if (type === node.type) {
-      if (isProgram(node) || isScope(node)) {
-        if (!state.scopes.has(node)) {
-          state.scopes.set(node, new Scope(node));
-        }
+    if (isCurrentNode) {
+      state.ancestors.set(node, [...ancestors]);
+      const parentNode = ancestors[ancestors.length - 2];
+      let scope = state.scopes.get(parentNode);
+      if (isProgram(node) || isScope(node, parentNode)) {
+        scope = new Scope(node, scope, state);
+      }
+      state.scopes.set(node, scope);
+    }
+
+    baseVisitor[type](node, st, call);
+
+    if (found) found(node, st || ancestors, ancestors);
+    if (isCurrentNode && virtualFnKeys.length > 0) {
+      for (const key of virtualFnKeys) {
+        const fn = visitors[key];
+        if (fn) fn(node, st || ancestors, ancestors);
       }
     }
-    baseVisitor[type](node, st, c);
-    if (found) found(node, st || ancestors, ancestors);
-    if (virtualFound) virtualFound(node, st || ancestors, ancestors);
     if (isNew) ancestors.pop();
-  }
-  c(node, state);
+  };
+  call(node, state);
 }
 
 export function createState(ast) {
   const state = {
     scopes: new WeakMap(),
+    ancestors: new WeakMap(),
 
-    getFunctionParent(ancestors) {
-      return this.getScope(ancestors, isFunctionParent);
-    },
-
-    getProgramParent(ancestors) {
-      return this.getScope(ancestors, isProgram);
-    },
-
-    getScope(ancestors, condition) {
-      let i = ancestors.length;
-      while (~--i) {
-        const node = ancestors[i];
-        if (this.scopes.has(node)) {
-          if (condition) {
-            if (condition(node)) {
-              return this.scopes.get(node);
-            }
-          } else {
-            return this.scopes.get(node);
-          }
+    _getParentScope(scope, condition) {
+      do {
+        if (condition(scope.node)) {
+          return scope;
         }
-      }
+      } while ((scope = scope.parent));
+      return null;
     },
 
     isReferenced(node, ancestors) {
@@ -147,8 +257,27 @@ export function createState(ast) {
       const grandparent = ancestors[l - 3];
       return isReferenced(node, parent, grandparent);
     },
+
+    getFunctionParent(scope) {
+      return this._getParentScope(scope, isFunctionParent);
+    },
+
+    getProgramParent(scope) {
+      scope = this._getParentScope(scope, isProgram);
+      if (scope) return scope;
+      throw new Error("Couldn't find a Program");
+    },
+
+    getBlockParent(scope) {
+      scope = this._getParentScope(scope, isBlockParent);
+      if (scope) return scope;
+      throw new Error(
+        "We couldn't find a BlockStatement, For, Switch, Function, Loop or Program...",
+      );
+    },
   };
 
+  console.log(state);
   scopeAncestor(ast, collectorVisitor, state);
   return state;
 }

@@ -16,7 +16,6 @@ export function transform(opts) {
   const ast = parser.parse();
   console.log(ast);
   const state = createState(ast);
-  console.log(state);
 
   // ancestor(ast, {
   //   ImportDeclaration(node, state, ancestors) {

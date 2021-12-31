@@ -204,6 +204,10 @@ export function transform(opts) {
   // 收集信息
   // https://262.ecma-international.org/7.0/#prod-ImportedBinding
   traverse(ast, {
+    VariableDeclarator(path) {
+      console.log(path.node.id.name, path.context.scope);
+    },
+
     // 静态 import
     ImportDeclaration(path) {
       const { node } = path;

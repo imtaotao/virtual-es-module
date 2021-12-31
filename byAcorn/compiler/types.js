@@ -40,6 +40,11 @@ export function isBlockStatement(node) {
   return node.type === 'BlockStatement';
 }
 
+export function isFunctionExpression(node) {
+  if (!node) return false;
+  return node.type === 'FunctionExpression';
+}
+
 export function isObjectMethod(node) {
   if (!node) return false;
   if (node.type !== 'Property') return false;
@@ -80,34 +85,6 @@ export function isCatchClause(node) {
   return node.type === 'CatchClause';
 }
 
-export function isScopable(node) {
-  if (!node) return false;
-  const nodeType = node.type;
-  if (
-    'BlockStatement' === nodeType ||
-    'CatchClause' === nodeType ||
-    'DoWhileStatement' === nodeType ||
-    'ForInStatement' === nodeType ||
-    'ForStatement' === nodeType ||
-    'FunctionDeclaration' === nodeType ||
-    'FunctionExpression' === nodeType ||
-    'Program' === nodeType ||
-    'SwitchStatement' === nodeType ||
-    'WhileStatement' === nodeType ||
-    'ArrowFunctionExpression' === nodeType ||
-    'ClassExpression' === nodeType ||
-    'ClassDeclaration' === nodeType ||
-    'ForOfStatement' === nodeType ||
-    'MethodDefinition' === nodeType ||
-    'ClassPrivateMethod' === nodeType ||
-    'StaticBlock' === nodeType ||
-    isObjectMethod(node)
-  ) {
-    return true;
-  }
-  return false;
-}
-
 export function isProgram(node) {
   if (!node) return false;
   return node.type === 'Program';
@@ -130,14 +107,35 @@ export function isFunctionParent(node) {
   return false;
 }
 
-export function isScope(node, parent) {
-  if (isBlockStatement(node) && (isFunction(parent) || isCatchClause(parent))) {
-    return false;
-  }
-  if (isPattern(node) && (isFunction(parent) || isCatchClause(parent))) {
+export function isBlockParent(node) {
+  if (!node) return false;
+  const nodeType = node.type;
+  if (
+    'BlockStatement' === nodeType ||
+    'CatchClause' === nodeType ||
+    'DoWhileStatement' === nodeType ||
+    'ForInStatement' === nodeType ||
+    'ForStatement' === nodeType ||
+    'FunctionDeclaration' === nodeType ||
+    'FunctionExpression' === nodeType ||
+    'Program' === nodeType ||
+    'ObjectMethod' === nodeType ||
+    'SwitchStatement' === nodeType ||
+    'WhileStatement' === nodeType ||
+    'ArrowFunctionExpression' === nodeType ||
+    'ForOfStatement' === nodeType ||
+    'MethodDefinition' === nodeType ||
+    'ClassPrivateMethod' === nodeType ||
+    'StaticBlock' === nodeType
+  ) {
     return true;
   }
-  return isScopable(node);
+  return false;
+}
+
+export function isLabeledStatement(node) {
+  if (!node) return false;
+  return node.type === 'LabeledStatement';
 }
 
 export function isFunctionDeclaration(node) {
@@ -192,6 +190,44 @@ export function isDeclaration(node) {
     'ExportDefaultDeclaration' === nodeType ||
     'ExportNamedDeclaration' === nodeType ||
     'ImportDeclaration' === nodeType
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isScope(node, parent) {
+  if (isBlockStatement(node) && (isFunction(parent) || isCatchClause(parent))) {
+    return false;
+  }
+  if (isPattern(node) && (isFunction(parent) || isCatchClause(parent))) {
+    return true;
+  }
+  return isScopable(node);
+}
+
+export function isScopable(node) {
+  if (!node) return false;
+  const nodeType = node.type;
+  if (
+    'BlockStatement' === nodeType ||
+    'CatchClause' === nodeType ||
+    'DoWhileStatement' === nodeType ||
+    'ForInStatement' === nodeType ||
+    'ForStatement' === nodeType ||
+    'FunctionDeclaration' === nodeType ||
+    'FunctionExpression' === nodeType ||
+    'Program' === nodeType ||
+    'SwitchStatement' === nodeType ||
+    'WhileStatement' === nodeType ||
+    'ArrowFunctionExpression' === nodeType ||
+    'ClassExpression' === nodeType ||
+    'ClassDeclaration' === nodeType ||
+    'ForOfStatement' === nodeType ||
+    'MethodDefinition' === nodeType ||
+    'ClassPrivateMethod' === nodeType ||
+    'StaticBlock' === nodeType ||
+    isObjectMethod(node)
   ) {
     return true;
   }

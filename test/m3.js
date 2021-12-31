@@ -5,7 +5,13 @@ import { a, b as bb } from './m1.js';
 export * as xx from './m1.js'
 export { name as t } from './m1.js' 
 
-import('./m1').then(() => {})
+import('./m1').then((a) => {
+  var a = 1;
+})
+
+function ab1(a = 2) {
+  var atao = 1;
+}
 
 var ct = 1;
 const aaa = 1;
