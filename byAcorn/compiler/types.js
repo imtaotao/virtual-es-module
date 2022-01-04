@@ -1,6 +1,7 @@
-// From `@babel/types`
+// Inspired by `@babel/types`
 // https://babeljs.io/docs/en/babel-parser
-// 过滤掉 ts, jsx 相关的代码判断，并将判断修正为 estree 的规范
+// Filter out ts, jsx related code judgments,
+// and modify the judgments to estree specifications
 
 function shallowEqual(actual, expected) {
   const keys = Object.keys(expected);
@@ -27,6 +28,11 @@ export function isLet(node) {
 
 export function isBlockScoped(node) {
   return isFunctionDeclaration(node) || isClassDeclaration(node) || isLet(node);
+}
+
+export function isArrowFunctionExpression(node) {
+  if (!node) return false;
+  return node.type === 'ArrowFunctionExpression';
 }
 
 export function isForXStatement(node) {
@@ -161,6 +167,11 @@ export function isClassDeclaration(node) {
   return node.type === 'ClassDeclaration';
 }
 
+export function isExportAllDeclaration(node) {
+  if (!node) return false;
+  return node.type === 'ExportAllDeclaration';
+}
+
 export function isExportDeclaration(node) {
   if (!node) return false;
   const nodeType = node.type;
@@ -174,9 +185,29 @@ export function isExportDeclaration(node) {
   return false;
 }
 
+export function isExportNamespaceSpecifier(node) {
+  if (!node) return false;
+  return node.type === 'ExportNamespaceSpecifier';
+}
+
+export function isExportDefaultDeclaration(node) {
+  if (!node) return false;
+  return node.type === 'ExportDefaultDeclaration';
+}
+
 export function isImportDeclaration(node) {
   if (!node) return false;
   return node.type === 'ImportDeclaration';
+}
+
+export function isImportDefaultSpecifier(node) {
+  if (!node) return false;
+  return node.type === 'ImportDefaultSpecifier';
+}
+
+export function isImportNamespaceSpecifier(node) {
+  if (!node) return false;
+  return node.type === 'ImportNamespaceSpecifier';
 }
 
 export function isDeclaration(node) {
@@ -240,7 +271,7 @@ export function isReferenced(node, parent, grandparent) {
     // yes: NODE.child
     // no: parent.NODE
     case 'MemberExpression':
-    case 'OptionalMemberExpression':
+    case 'OptionalMemberExpression': // acorn 还没有实现可选链
       if (parent.property === node) {
         return !!parent.computed;
       }
@@ -260,7 +291,7 @@ export function isReferenced(node, parent, grandparent) {
     // no: class { get #NODE() {} }
     // no: class { #NODE() {} }
     // no: class { fn() { return this.#NODE; } }
-    case 'PrivateName':
+    case 'PrivateName': // acorn 还没有实现私有属性
       return false;
 
     // method:
@@ -272,7 +303,7 @@ export function isReferenced(node, parent, grandparent) {
     //  no: { NODE: "" }
     //  depends: { NODE }
     //  depends: { key: NODE }
-    case 'MethodDefinition': // ClassMethod
+    case 'MethodDefinition': // babel 替换为了 ClassMethod
     case 'ClassPrivateMethod':
     case 'Property':
       if (parent.key === node) {
@@ -289,7 +320,7 @@ export function isReferenced(node, parent, grandparent) {
     // yes: class { [NODE] = value; }
     // yes: class { key = NODE; }
     // case 'ClassProperty':
-    case 'PropertyDefinition': // acorn 暂时还不支持
+    case 'PropertyDefinition': // acorn 还没有实现类的属性定义
       if (parent.key === node) {
         return !!parent.computed;
       }
@@ -360,7 +391,7 @@ export function isReferenced(node, parent, grandparent) {
       return false;
 
     // no: import "foo" assert { NODE: "json" }
-    case 'ImportAttribute':
+    case 'ImportAttribute': // acorn 还没有实现
       return false;
 
     // no: [NODE] = [];

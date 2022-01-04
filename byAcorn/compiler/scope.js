@@ -1,12 +1,15 @@
-// From `@babel/traverse`
+// Inspired by `@babel/traverse`
 import {
   isProgram,
+  isPattern,
+  isFunction,
   isLabeledStatement,
   isClassDeclaration,
   isImportDeclaration,
   isExportDeclaration,
   isVariableDeclaration,
   isFunctionDeclaration,
+  isArrowFunctionExpression,
 } from './types';
 
 // type Kind =
@@ -23,9 +26,9 @@ export class Scope {
     this.node = node;
     this.state = state;
     this.parent = parent;
+    this.globals = {};
     this.bindings = {};
     this.labels = new Map();
-    this.constantViolations = new Set();
   }
 
   get isTopLevel() {
@@ -36,27 +39,78 @@ export class Scope {
     this.labels.set(node.label.name, node);
   }
 
-  setRef(name, node) {
-    this.bindings[name].references.add(node);
+  addGlobal(node) {
+    this.globals[node.name] = node.name;
   }
 
-  setViolation(name, node) {
-    this.bindings[name].constantViolations.add(node);
+  reference(name, node) {
+    const binding = this.getBinding(name);
+    if (binding) {
+      binding.references.add(node);
+    }
+  }
+
+  registerConstantViolation(name, node) {
+    const binding = this.getBinding(name);
+    if (binding) {
+      binding.constantViolations.add(node);
+    }
   }
 
   getBinding(name) {
-    return this.bindings[name];
+    let scope = this;
+    let previousNode;
+    do {
+      const binding = this.bindings[name];
+      if (binding) {
+        // 函数自身的声明和参数不能被
+        if (
+          isPattern(previousNode) &&
+          binding.kind !== 'param' &&
+          binding.kind !== 'local'
+        ) {
+          // do nothing
+        } else {
+          return binding;
+        }
+      } else if (
+        !binding &&
+        isFunction(scope.node) &&
+        isArrowFunctionExpression(scope.node)
+      ) {
+        break;
+      }
+      previousNode = scope.node;
+    } while ((scope = scope.parent));
+  }
+
+  checkBlockScopedCollisions(local, kind, name) {
+    if (kind === 'param') return;
+    // 函数自己的声明规范中是一个独立的作用域，可以被覆盖
+    if (binding.kind === 'local') return;
+    if (
+      kind === 'let' ||
+      local.kind === 'let' ||
+      local.kind === 'const' ||
+      local.kind === 'module' ||
+      // don't allow a local of param with a kind of let
+      (local.kind === 'param' && (kind === 'let' || kind === 'const'))
+    ) {
+      throw new Error(`Duplicate declaration "${name}"`);
+    }
   }
 
   registerBinding(kind, name, node) {
     if (!kind) throw new ReferenceError('no `kind`');
     const binding = this.bindings[name];
+
     if (binding) {
       // 遍历的时候会有重复塞入
       if (binding.node === node) return;
-      if (kind !== 'param') {
-        throw new Error(`Duplicate declaration "${name}"`);
-      }
+      // 检查作用域的碰撞
+      this.checkBlockScopedCollisions(binding, kind, name);
+      // 如果顺利通过，则代表被更改了，重复的声明也是更改
+      this.registerConstantViolation(name, node);
     } else {
       this.bindings[name] = {
         kind,

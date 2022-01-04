@@ -1,23 +1,24 @@
-// From `@babel/traverse`
+// Inspired by `@babel/traverse`
 import { base } from 'acorn-walk';
 import { Scope } from './scope';
 import { collectorVisitor } from './collectorVisitor';
 import {
   isScope,
   isProgram,
-  isReferenced,
   isBlockScoped,
   isDeclaration,
   isBlockParent,
   isForXStatement,
   isFunctionParent,
+  isExportDeclaration,
+  isVariableDeclaration,
 } from './types';
 
-// 虚拟 types
 const virtualTypes = {
   Declaration: isDeclaration,
   BlockScoped: isBlockScoped,
   ForXStatement: isForXStatement,
+  ExportDeclaration: isExportDeclaration,
 };
 const virtualTypesKeys = Object.keys(virtualTypes);
 
@@ -58,7 +59,9 @@ function walk(node, visitors, state) {
 
 function getParentScope(scope, condition) {
   do {
-    if (condition(scope.node)) return scope;
+    if (condition(scope.node)) {
+      return scope;
+    }
   } while ((scope = scope.parent));
   return null;
 }
@@ -67,12 +70,10 @@ export function createState(ast) {
   const state = {
     scopes: new WeakMap(),
     ancestors: new WeakMap(),
-
-    isReferenced(node, ancestors) {
-      const l = ancestors.length;
-      const parent = ancestors[l - 2];
-      const grandparent = ancestors[l - 3];
-      return isReferenced(node, parent, grandparent);
+    defer: {
+      references: new Set(),
+      assignments: new Set(),
+      constantViolations: new Set(),
     },
 
     getFunctionParent(scope) {
@@ -92,9 +93,65 @@ export function createState(ast) {
         "We couldn't find a BlockStatement, For, Switch, Function, Loop or Program...",
       );
     },
+
+    remove(node, ancestors) {
+      this.replaceWith(node, null, ancestors);
+    },
+
+    replaceWith(node, replacement, ancestors) {
+      if (node === replacement) return;
+      const parent = ancestors[ancestors.length - 2];
+      const set = (obj, key) => {
+        const scope = this.scopes.get(node);
+        obj[key] = replacement;
+        this.scopes.set(replacement, scope);
+        this.ancestors.set(replacement, ancestors);
+      };
+
+      if (isVariableDeclaration(node)) {
+        const { declarations } = node;
+        const idx = declarations.indexOf(node);
+        if (idx > -1) set(declarations, key);
+      } else {
+        for (const key in parent) {
+          if (parent[key] === node) {
+            set(parent, key);
+          }
+        }
+      }
+    },
   };
 
-  console.log(state);
   walk(ast, collectorVisitor, state);
+
+  const programParent = state.getProgramParent(state.scopes.get(ast));
+
+  state.defer.assignments.forEach((fn) => {
+    const { name, node } = fn();
+    const scope = state.scopes.get(node);
+    if (!scope.getBinding(name)) {
+      programParent.addGlobal(node);
+    }
+    scope.registerConstantViolation(name, node);
+  });
+
+  state.defer.references.forEach((fn) => {
+    const { type, node } = fn();
+    const scope = state.scopes.get(node);
+    const binding = scope.getBinding(node.name);
+    if (binding) {
+      binding.references.add(node);
+    } else if (type !== 'export') {
+      programParent.addGlobal(node);
+    }
+  });
+
+  state.defer.constantViolations.forEach((fn) => {
+    const { name, node } = fn();
+    const scope = state.scopes.get(node);
+    scope.registerConstantViolation(name, node);
+  });
+
+  delete state.defer;
   return state;
 }

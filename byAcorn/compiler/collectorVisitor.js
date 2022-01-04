@@ -1,12 +1,17 @@
-// From `@babel/traverse`
+// Inspired by `@babel/traverse`
 import {
   isVar,
   isPattern,
   isIdentifier,
+  isReferenced,
   isBlockScoped,
+  isClassDeclaration,
   isImportDeclaration,
   isExportDeclaration,
+  isFunctionDeclaration,
+  isExportAllDeclaration,
   isFunctionExpression,
+  isVariableDeclaration,
 } from './types';
 
 export const collectorVisitor = {
@@ -17,6 +22,7 @@ export const collectorVisitor = {
       const scope = state.scopes.get(node);
       const parent =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
+
       for (const decl of init.declarations) {
         if (isIdentifier(decl.id)) {
           parent.registerBinding('var', decl.id.name, decl);
@@ -48,15 +54,47 @@ export const collectorVisitor = {
     parent.registerDeclaration(node);
   },
 
+  Identifier(node, state, ancestors) {
+    const l = ancestors.length;
+    const parent = ancestors[l - 2];
+    const grandparent = ancestors[l - 3];
+    if (isReferenced(node, parent, grandparent)) {
+      state.defer.references.add(() => {
+        return { node, type: 'identifier' };
+      });
+    }
+  },
+
   ForXStatement(node, state) {
     const scope = state.scopes.get(node);
     const { left } = node;
     if (isPattern(left) || isIdentifier(left)) {
-      scope.constantViolations.add(node);
+      scope.registerConstantViolation(left.name, node);
     } else if (isVar(left)) {
       const parentScope =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
       parentScope.registerBinding('var', left, left);
+    }
+  },
+
+  ExportDeclaration(node, state) {
+    if (isExportAllDeclaration(node)) return;
+    const { declarations } = node;
+    if (
+      isClassDeclaration(declarations) ||
+      isFunctionDeclaration(declarations)
+    ) {
+      const { id } = declarations;
+      if (!id) return;
+      state.defer.references.add(() => {
+        return { node: id, type: 'export' };
+      });
+    } else if (isVariableDeclaration(declarations)) {
+      for (const decl of declarations) {
+        state.defer.references.add(() => {
+          return { node: decl.id, type: 'export' };
+        });
+      }
     }
   },
 
@@ -66,15 +104,23 @@ export const collectorVisitor = {
     parent.registerDeclaration(node);
   },
 
+  AssignmentExpression(node, state) {
+    state.defer.assignments.add(() => {
+      return { node, name: node.left.name };
+    });
+  },
+
   UpdateExpression(node, state) {
-    const scope = state.scopes.get(node);
-    scope.constantViolations.add(node);
+    state.defer.constantViolations.add(() => {
+      return { node, name: node.argument.name };
+    });
   },
 
   UnaryExpression(node, state) {
     if (node.operator === 'delete') {
-      const scope = state.scopes.get(node);
-      scope.constantViolations.add(node);
+      state.defer.constantViolations.add(() => {
+        return { node, name: node.argument.name };
+      });
     }
   },
 
