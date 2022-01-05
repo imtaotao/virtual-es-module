@@ -360,7 +360,6 @@ export function transform(opts) {
       Identifier(node, state, ancestors) {
         const parent = ancestors[ancestors.length - 2];
         if (isExportSpecifier(parent)) return;
-        console.log(node, state.scopes.get(node), hasUseEsmVars(node));
         if (hasUseEsmVars(node)) {
           ancestors = [...ancestors];
           deferQueue.identifierRefs.add(() => {

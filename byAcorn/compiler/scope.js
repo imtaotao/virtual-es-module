@@ -65,19 +65,23 @@ export class Scope {
     do {
       const binding = scope.bindings[name];
       if (binding) {
-        // 函数自身的声明和参数不能被
         if (
           isPattern(previousNode) &&
           binding.kind !== 'param' &&
           binding.kind !== 'local'
         ) {
-          // do nothing
+          // 这里不做任何事情
+          // 如果是 pattern 中作用域中引用了自身没定义的变量，不能在函数体内寻找
+          // 他是独立的作用域，并不是父子关系，这里只是为了性能合并在了一起，所以需要继续往外找。
+          // 但是有两种情况特殊
+          //  1. param 是参数，可以被函数体内访问
+          //  2. local 是函数自身的声明，这个一层的作用域也是可以被函数体内访问的
         } else {
           return binding;
         }
       } else if (
         !binding &&
-        name === 'arguments' &&
+        name === 'arguments' && // arguments 是不可见的函数内部参数声明
         isFunction(scope.node) &&
         isArrowFunctionExpression(scope.node)
       ) {
@@ -133,7 +137,7 @@ export class Scope {
     } else if (isVariableDeclaration(node)) {
       const { declarations } = node;
       for (const decl of declarations) {
-        // node.kind 有 var, let, const
+        // node.kind 有 `var`, `let`, `const`
         const ids = getBindingIdentifiers(decl.id);
         for (const name of ids) {
           this.registerBinding(node.kind, name, decl);

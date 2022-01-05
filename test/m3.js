@@ -8,6 +8,11 @@ import('./m1').then((a) => {
   var a = 1;
 })
 
+function fun(y = x) {
+  let x = 2;
+  console.log(y);
+}
+
 function ab1(a) {
   'use strict';
   var atao = 1;
@@ -26,7 +31,7 @@ for (var i = 0; i < 1; i++) {
 
 // m1.a = aaa;
 
-function fn(b = 1) {
+function fn(a, b = a) {
   console.log(bb, m1);
   return () => {
     var m1 = 2;

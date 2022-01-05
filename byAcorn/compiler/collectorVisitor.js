@@ -48,7 +48,6 @@ export const collectorVisitor = {
   },
 
   ImportDeclaration(node, state) {
-    console.log(node, 'import');
     const scope = state.scopes.get(node);
     const parent = state.getBlockParent(scope);
     parent.registerDeclaration(node);

@@ -154,8 +154,6 @@ export function createState(ast) {
   };
 
   walk(ast, collectorVisitor, state);
-  console.log(state.scopes);
-
   const programParent = state.getProgramParent(state.scopes.get(ast));
 
   state.defer.assignments.forEach((fn) => {
@@ -175,7 +173,6 @@ export function createState(ast) {
     const ids = getBindingIdentifiers(node);
     for (const name of ids) {
       const binding = scope.getBinding(name);
-      console.log(scope, binding, node);
       if (binding) {
         binding.references.add(node);
       } else if (type === 'identifier') {
