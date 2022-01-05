@@ -148,6 +148,7 @@ export function transform(opts) {
   const exportInfos = [];
   const deferQueue = {
     removes: new Set(),
+    replaces: new Set(),
     importChecks: new Set(),
     identifierRefs: new Set(),
     exportNamespaces: new Set(),
@@ -224,6 +225,7 @@ export function transform(opts) {
     const parent = ancestors[ancestors.length - 2];
     if (isExportSpecifier(parent)) return;
     const scope = state.getScopeByAncestors(ancestors);
+
     if (hasUseEsmVars(scope, node)) {
       ancestors = [...ancestors];
       deferQueue.identifierRefs.add(() => {
@@ -259,13 +261,18 @@ export function transform(opts) {
       });
 
       if (isDefault) {
-        const varName = identifier(__VIRTUAL_DEFAULT__);
-        const varNode = variableDeclarator(varName, declaration);
-        state.replaceWith(variableDeclaration('const', [varNode]), ancestors);
+        deferQueue.replaces.add(() => {
+          const varName = identifier(__VIRTUAL_DEFAULT__);
+          // declaration 可能已经被替换过了，需要重新从 node 上取
+          const varNode = variableDeclarator(varName, node.declaration);
+          state.replaceWith(variableDeclaration('const', [varNode]), ancestors);
+        });
       } else if (isIdentifier(declaration)) {
         deferQueue.removes.add(() => state.remove(ancestors));
       } else {
-        state.replaceWith(declaration, ancestors);
+        deferQueue.replaces.add(() => {
+          state.replaceWith(node.declaration, ancestors);
+        });
       }
     } else if (specifiers) {
       const { source } = node;
@@ -410,6 +417,7 @@ export function transform(opts) {
 
     deferQueue.importChecks.forEach((fn) => fn());
     deferQueue.identifierRefs.forEach((fn) => fn());
+    deferQueue.replaces.forEach((fn) => fn());
     deferQueue.removes.forEach((fn) => fn());
 
     // 生成转换后的代码

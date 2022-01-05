@@ -27,9 +27,9 @@ export class Scope {
     this.node = node;
     this.state = state;
     this.parent = parent;
+    this.labels = new Map();
     this.globals = Object.create(null);
     this.bindings = Object.create(null);
-    this.labels = new Map();
   }
 
   get isTopLevel() {

@@ -26,6 +26,11 @@ export function isLet(node) {
   return isVariableDeclaration(node) && node.kind !== 'var';
 }
 
+export function isProperty(node) {
+  if (!node) return false;
+  return node.type === 'Property';
+}
+
 export function isBlockScoped(node) {
   return isFunctionDeclaration(node) || isClassDeclaration(node) || isLet(node);
 }

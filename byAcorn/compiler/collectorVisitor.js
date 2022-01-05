@@ -3,7 +3,6 @@ import {
   isVar,
   isPattern,
   isIdentifier,
-  isReferenced,
   isBlockScoped,
   isClassDeclaration,
   isImportDeclaration,

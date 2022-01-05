@@ -5,6 +5,7 @@ import { collectorVisitor } from './collectorVisitor';
 import {
   isScope,
   isProgram,
+  isProperty,
   isIdentifier,
   isReferenced,
   isBlockScoped,
@@ -144,24 +145,36 @@ export function createState(ast) {
       const parent = ancestors[l - 2];
 
       const set = (obj, key) => {
-        const scope = this.scopes.get(node);
+        const isProp = isProperty(obj);
         if (replacement === null) {
-          // 删除后会影响遍历的顺序
+          // 删除后会影响遍历的顺序，所以 remove 要延时执行
           Array.isArray(obj) ? obj.splice(key, 1) : delete obj[key];
+          if (isProp && obj.shorthand) {
+            delete obj[key === 'key' ? 'value' : 'key'];
+          }
         } else {
           obj[key] = replacement;
-          this.scopes.set(replacement, scope);
           this.ancestors.set(replacement, ancestors);
+          this.scopes.set(replacement, this.scopes.get(node));
+          if (isProp) {
+            if (isIdentifier(obj.key) && isIdentifier(obj.value)) {
+              if (obj.key.name !== obj.value.name) {
+                obj.shorthand = false;
+              }
+            } else {
+              obj.shorthand = false;
+            }
+          }
         }
       };
 
       for (const key in parent) {
-        const children = parent[key];
-        if (Array.isArray(children)) {
-          const idx = children.indexOf(node);
-          if (idx > -1) set(children, idx);
+        const child = parent[key];
+        if (Array.isArray(child)) {
+          const idx = child.indexOf(node);
+          if (idx > -1) set(child, idx);
         } else {
-          if (parent[key] === node) {
+          if (child === node) {
             set(parent, key);
           }
         }
