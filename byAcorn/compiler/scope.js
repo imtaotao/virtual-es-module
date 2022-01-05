@@ -27,8 +27,8 @@ export class Scope {
     this.node = node;
     this.state = state;
     this.parent = parent;
-    this.globals = {};
-    this.bindings = {};
+    this.globals = Object.create(null);
+    this.bindings = Object.create(null);
     this.labels = new Map();
   }
 
@@ -40,8 +40,8 @@ export class Scope {
     this.labels.set(node.label.name, node);
   }
 
-  addGlobal(node, name) {
-    this.globals[name || node.name] = node;
+  addGlobal(node) {
+    this.globals[node.name] = node;
   }
 
   reference(name, node) {
@@ -139,7 +139,7 @@ export class Scope {
       for (const decl of declarations) {
         // node.kind 有 `var`, `let`, `const`
         const ids = getBindingIdentifiers(decl.id);
-        for (const name of ids) {
+        for (const { name } of ids) {
           this.registerBinding(node.kind, name, decl);
         }
       }

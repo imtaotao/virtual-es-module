@@ -59,16 +59,16 @@ export async function startByScriptTags(typeFlag) {
 }
 
 // 如果是在浏览器环境中，则直接执行代码
-// if (typeof document !== 'undefined') {
-//   const typeFlag = 'virtual-module';
-//   if (document.readyState === 'complete') {
-//     setTimeout(() => startByScriptTags(typeFlag));
-//   } else {
-//     document.addEventListener(
-//       'DOMContentLoaded',
-//       () => startByScriptTags(typeFlag),
-//       false,
-//     );
-//   }
-// }
-startByUrl('./m3.js');
+if (typeof document !== 'undefined') {
+  const typeFlag = 'virtual-module';
+  if (document.readyState === 'complete') {
+    setTimeout(() => startByScriptTags(typeFlag));
+  } else {
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => startByScriptTags(typeFlag),
+      false,
+    );
+  }
+}
+// startByUrl('./m3.js');

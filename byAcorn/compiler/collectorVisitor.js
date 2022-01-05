@@ -23,7 +23,7 @@ export const collectorVisitor = {
         state.getFunctionParent(scope) || state.getProgramParent(scope);
       for (const decl of init.declarations) {
         const ids = state.getBindingIdentifiers(decl.id);
-        for (const name of ids) {
+        for (const { name } of ids) {
           parent.registerBinding('var', name, decl);
         }
       }
@@ -54,12 +54,11 @@ export const collectorVisitor = {
   },
 
   Identifier(node, state, ancestors) {
-    const l = ancestors.length;
-    const parent = ancestors[l - 2];
-    const grandparent = ancestors[l - 3];
-    if (isReferenced(node, parent, grandparent)) {
+    if (state.isReferenced(ancestors)) {
       state.defer.references.add(() => {
-        return { node, type: 'identifier' };
+        const scope = state.scopes.get(node);
+        const ids = state.getBindingIdentifiers(node);
+        return { scope, ids, type: 'identifier' };
       });
     }
   },
@@ -69,32 +68,35 @@ export const collectorVisitor = {
     const { left } = node;
     if (isPattern(left) || isIdentifier(left)) {
       const ids = state.getBindingIdentifiers(left);
-      for (const name of ids) {
+      for (const { name } of ids) {
         scope.registerConstantViolation(name, node);
       }
     } else if (isVar(left)) {
       const parentScope =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
-      parentScope.registerBinding('var', left, left);
+      parentScope.registerBinding('var', left.name, left);
     }
   },
 
   ExportDeclaration(node, state) {
     if (isExportAllDeclaration(node)) return;
     const { declarations } = node;
+    const scope = state.scopes.get(node);
     if (
       isClassDeclaration(declarations) ||
       isFunctionDeclaration(declarations)
     ) {
       const { id } = declarations;
       if (!id) return;
+      const ids = state.getBindingIdentifiers(id);
       state.defer.references.add(() => {
-        return { node: id, type: 'export' };
+        return { ids, type: 'export' };
       });
     } else if (isVariableDeclaration(declarations)) {
       for (const decl of declarations) {
         state.defer.references.add(() => {
-          return { node: decl.id, type: 'export' };
+          const ids = state.getBindingIdentifiers(decl.id);
+          return { scope, ids, type: 'export' };
         });
       }
     }
@@ -108,20 +110,23 @@ export const collectorVisitor = {
 
   AssignmentExpression(node, state) {
     state.defer.assignments.add(() => {
-      return { node, ids: state.getBindingIdentifiers(node.left) };
+      const scope = state.scopes.get(node);
+      return { scope, ids: state.getBindingIdentifiers(node.left) };
     });
   },
 
   UpdateExpression(node, state) {
     state.defer.constantViolations.add(() => {
-      return { node, name: node.argument.name };
+      const scope = state.scopes.get(node);
+      return { scope, node: node.argument };
     });
   },
 
   UnaryExpression(node, state) {
     if (node.operator === 'delete') {
       state.defer.constantViolations.add(() => {
-        return { node, name: node.argument.name };
+        const scope = state.scopes.get(node);
+        return { scope, node: node.argument };
       });
     }
   },
@@ -129,7 +134,7 @@ export const collectorVisitor = {
   CatchClause(node, state) {
     const scope = state.scopes.get(node);
     const ids = state.getBindingIdentifiers(node.param);
-    for (const name of ids) {
+    for (const { name } of ids) {
       scope.registerBinding('let', name, node);
     }
   },
@@ -139,7 +144,7 @@ export const collectorVisitor = {
     const scope = state.scopes.get(node);
     for (const param of params) {
       const ids = state.getBindingIdentifiers(param);
-      for (const name of ids) {
+      for (const { name } of ids) {
         scope.registerBinding('param', name, param);
       }
     }

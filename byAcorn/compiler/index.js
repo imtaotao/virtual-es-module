@@ -2,17 +2,16 @@ import { Parser } from 'acorn';
 import { ancestor } from 'acorn-walk';
 import { generate } from 'escodegen';
 import { createState } from './state';
-import * as t from '@babel/types';
 import { moduleResource } from '../execCode';
 import {
   isIdentifier,
   isVariableDeclaration,
-  isImportDefaultSpecifier,
-  isImportNamespaceSpecifier,
   isExportSpecifier,
   isExportAllDeclaration,
   isExportNamespaceSpecifier,
   isExportDefaultDeclaration,
+  isImportDefaultSpecifier,
+  isImportNamespaceSpecifier,
 } from './types';
 import {
   literal,
@@ -26,7 +25,6 @@ import {
   variableDeclaration,
   expressionStatement,
   functionDeclaration,
-  assignmentExpression,
   arrowFunctionExpression,
 } from './generated';
 
@@ -38,7 +36,14 @@ const __VIRTUAL_NAMESPACE__ = '__VIRTUAL_NAMESPACE__';
 const __VIRTUAL_IMPORT_META__ = '__VIRTUAL_IMPORT_META__';
 const __VIRTUAL_DYNAMIC_IMPORT__ = '__VIRTUAL_DYNAMIC_IMPORT__';
 
-window.t = t;
+function parseWrapper(parser, filename) {
+  try {
+    return parser.parse();
+  } catch (e) {
+    e.message += `(${filename})`;
+    throw e;
+  }
+}
 
 function childModuleExports(moduleId) {
   return moduleResource[moduleId].exports;
@@ -147,9 +152,11 @@ export function transform(opts) {
     identifierRefs: new Set(),
     exportNamespaces: new Set(),
   };
-  const parser = new Parser({ sourceType: 'module' }, opts.code);
-  const ast = parser.parse();
-  console.log(ast);
+  const parser = new Parser(
+    { sourceType: 'module', ecmaVersion: 'latest' },
+    opts.code,
+  );
+  const ast = parseWrapper(parser, opts.filename);
   const state = createState(ast);
 
   const findIndxInData = (refName, data) => {
@@ -179,16 +186,12 @@ export function transform(opts) {
     return [];
   };
 
-  const hasUseEsmVars = (node) => {
-    let scope = state.scopes.get(node);
+  const hasUseEsmVars = (scope, node) => {
     const hasUse = () =>
       Object.keys(scope.bindings).some((key) => {
-        const varItem = scope.bindings[key];
-        if (varItem.kind === 'module') {
-          if (varItem.references.has(node)) {
-            return true;
-          }
-          return [...varItem.constantViolations].some((n) => n.left === node);
+        const { kind, references, constantViolations } = scope.bindings[key];
+        if (kind === 'module') {
+          return references.has(node) || constantViolations.has(node);
         }
       });
     while (scope) {
@@ -198,7 +201,6 @@ export function transform(opts) {
     return false;
   };
 
-  // 替换为 `__mo__.x`;
   const importReplaceNode = (nameOrInfo) => {
     const { i, data } =
       typeof nameOrInfo === 'string' ? refModule(nameOrInfo) : nameOrInfo;
@@ -218,9 +220,25 @@ export function transform(opts) {
     }
   };
 
+  const Identifier = (node, state, ancestors) => {
+    const parent = ancestors[ancestors.length - 2];
+    if (isExportSpecifier(parent)) return;
+    const scope = state.getScopeByAncestors(ancestors);
+    if (hasUseEsmVars(scope, node)) {
+      ancestors = [...ancestors];
+      deferQueue.identifierRefs.add(() => {
+        const replacement = importReplaceNode(node.name);
+        if (replacement) {
+          state.replaceWith(replacement, ancestors);
+        }
+      });
+    }
+  };
+
   const ExportDeclaration = (node, state, ancestors) => {
     ancestors = [...ancestors];
     const { specifiers, declaration } = node;
+    const scope = state.getScopeByAncestors(ancestors);
 
     if (declaration) {
       const isDefault = isExportDefaultDeclaration(node);
@@ -277,7 +295,7 @@ export function transform(opts) {
         });
       } else {
         specifiers.forEach((n) => {
-          const refNode = hasUseEsmVars(n.local)
+          const refNode = hasUseEsmVars(scope, n.local)
             ? importReplaceNode(n.local.name)
             : identifier(n.local.name);
           exportInfos.push({ refNode, name: n.exported.name });
@@ -316,11 +334,17 @@ export function transform(opts) {
   ancestor(
     ast,
     {
+      // 引用替换
+      Identifier: Identifier,
+      // `let x = 1` 和 `x = 2;` `acorn` 给单独区分出来了
+      VariablePattern: Identifier,
+
       // export 声明
       ExportAllDeclaration: ExportDeclaration,
       ExportNamedDeclaration: ExportDeclaration,
       ExportDefaultDeclaration: ExportDeclaration,
 
+      // import 声明
       ImportDeclaration(node, state, ancestors) {
         ancestors = [...ancestors];
         const moduleId = node.source.value;
@@ -338,6 +362,7 @@ export function transform(opts) {
         );
       },
 
+      // 动态 import
       ImportExpression(node, state, ancestors) {
         const replacement = callExpression(
           identifier(__VIRTUAL_DYNAMIC_IMPORT__),
@@ -346,6 +371,7 @@ export function transform(opts) {
         state.replaceWith(replacement, ancestors);
       },
 
+      // import.meta
       MetaProperty(node, state, ancestors) {
         if (node.meta.name === 'import') {
           const replacement = memberExpression(
@@ -353,21 +379,6 @@ export function transform(opts) {
             node.property,
           );
           state.replaceWith(replacement, ancestors);
-        }
-      },
-
-      // 引用替换
-      Identifier(node, state, ancestors) {
-        const parent = ancestors[ancestors.length - 2];
-        if (isExportSpecifier(parent)) return;
-        if (hasUseEsmVars(node)) {
-          ancestors = [...ancestors];
-          deferQueue.identifierRefs.add(() => {
-            const replacement = importReplaceNode(node.name);
-            if (replacement) {
-              state.replaceWith(replacement, ancestors);
-            }
-          });
         }
       },
     },
@@ -405,18 +416,16 @@ export function transform(opts) {
     createVirtualModuleApi(ast, importInfos, exportInfos);
     createWrapperFunction(ast);
 
-    console.log(ast, opts.filename);
-    const code = generate(ast);
-    console.log(code);
-    return {
-      code,
-    };
+    const output = generate(ast, {
+      sourceMap: opts.code,
+      sourceMapWithCode: true,
+      file: opts.filename,
+    });
+    return output;
   }
 
   return {
     generateCode,
-    // exports: [],
-    // imports: [],
     exports: exportInfos.map((v) => v.name),
     imports: importInfos.map((v) => v.data),
   };

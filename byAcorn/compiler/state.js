@@ -6,6 +6,7 @@ import {
   isScope,
   isProgram,
   isIdentifier,
+  isReferenced,
   isBlockScoped,
   isDeclaration,
   isBlockParent,
@@ -73,7 +74,7 @@ function getParentScope(scope, condition) {
 export function getBindingIdentifiers(node) {
   const f = (node) => {
     if (isIdentifier(node)) {
-      return [node.name];
+      return [node];
     } else if (isArrayPattern(node)) {
       return node.elements.map((el) => f(el)).flat();
     } else if (isObjectPattern(node)) {
@@ -82,6 +83,8 @@ export function getBindingIdentifiers(node) {
       return f(node.left);
     } else if (isRestElement(node)) {
       return f(node.argument);
+    } else {
+      return [];
     }
   };
   return f(node);
@@ -99,6 +102,14 @@ export function createState(ast) {
 
     getBindingIdentifiers,
 
+    getScopeByAncestors(ancestors) {
+      let l = ancestors.length;
+      while (~--l) {
+        const scope = this.scopes.get(ancestors[l]);
+        if (scope) return scope;
+      }
+    },
+
     getFunctionParent(scope) {
       return getParentScope(scope, isFunctionParent);
     },
@@ -115,6 +126,11 @@ export function createState(ast) {
       throw new Error(
         "We couldn't find a BlockStatement, For, Switch, Function, Loop or Program...",
       );
+    },
+
+    isReferenced(ancestors) {
+      const l = ancestors.length;
+      return isReferenced(ancestors[l - 1], ancestors[l - 2], ancestors[l - 3]);
     },
 
     remove(ancestors) {
@@ -157,22 +173,19 @@ export function createState(ast) {
   const programParent = state.getProgramParent(state.scopes.get(ast));
 
   state.defer.assignments.forEach((fn) => {
-    const { ids, node } = fn();
-    const scope = state.scopes.get(node);
-    for (const name of ids) {
-      if (!scope.getBinding(name)) {
-        programParent.addGlobal(node, name);
+    const { ids, scope } = fn();
+    for (const node of ids) {
+      if (!scope.getBinding(node.name)) {
+        programParent.addGlobal(node);
       }
-      scope.registerConstantViolation(name, node);
+      scope.registerConstantViolation(node.name, node);
     }
   });
 
   state.defer.references.forEach((fn) => {
-    const { type, node } = fn();
-    const scope = state.scopes.get(node);
-    const ids = getBindingIdentifiers(node);
-    for (const name of ids) {
-      const binding = scope.getBinding(name);
+    const { ids, type, scope } = fn();
+    for (const node of ids) {
+      const binding = scope.getBinding(node.name);
       if (binding) {
         binding.references.add(node);
       } else if (type === 'identifier') {
@@ -182,9 +195,8 @@ export function createState(ast) {
   });
 
   state.defer.constantViolations.forEach((fn) => {
-    const { name, node } = fn();
-    const scope = state.scopes.get(node);
-    scope.registerConstantViolation(name, node);
+    const { node, scope } = fn();
+    scope.registerConstantViolation(node.name, node);
   });
 
   delete state.defer;
