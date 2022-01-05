@@ -8,7 +8,6 @@ import {
   isVariableDeclaration,
   isExportSpecifier,
   isExportAllDeclaration,
-  isExportNamespaceSpecifier,
   isExportDefaultDeclaration,
   isImportDefaultSpecifier,
   isImportNamespaceSpecifier,
@@ -73,12 +72,10 @@ function importInformation(node) {
 
 function importInformationBySource(node) {
   const imports = (node.specifiers || []).map((n) => {
-    const isNamespace = isExportNamespaceSpecifier(n);
-    const alias = isNamespace ? null : n.exported.name;
-    const name = isNamespace ? n.exported.name : n.local.name;
+    const alias = n.exported.name;
+    const name = n.local.name;
     return {
       name,
-      isNamespace,
       alias: alias === name ? null : alias,
     };
   });
@@ -159,6 +156,11 @@ export function transform(opts) {
   );
   const ast = parseWrapper(parser, opts.filename);
   const state = createState(ast);
+
+  const isDebug = opts.filename.includes('m4.js');
+  if (isDebug) {
+    console.log(ast);
+  }
 
   const findIndxInData = (refName, data) => {
     for (let i = 0; i < data.imports.length; i++) {
@@ -290,18 +292,15 @@ export function transform(opts) {
           checkImportNames(data.imports, moduleId),
         );
         specifiers.forEach((n) => {
-          let refName;
-          if (isExportNamespaceSpecifier(n)) {
-            refName = n.exported.name;
-          } else {
-            refName = n.local.name;
-          }
-          const useInfo = findIndxInData(refName, data);
+          const useInfo = findIndxInData(n.local.name, data);
           const refNode = importReplaceNode(useInfo);
           exportInfos.push({ refNode, name: n.exported.name });
         });
       } else {
         specifiers.forEach((n) => {
+          if (opts.filename === './m3.js') {
+            console.log(n, scope, hasUseEsmVars(scope, n.local));
+          }
           const refNode = hasUseEsmVars(scope, n.local)
             ? importReplaceNode(n.local.name)
             : identifier(n.local.name);
@@ -312,23 +311,33 @@ export function transform(opts) {
     } else if (isExportAllDeclaration(node)) {
       const moduleId = node.source.value;
       const data = importInformationBySource(node);
+      const namespace = node.exported && node.exported.name;
       let [moduleName, transformNode] = findImportInfo(moduleId);
       if (!moduleName) {
         moduleName = `__m${moduleCount++}__`;
         transformNode = createImportTransformNode(moduleName, moduleId);
       }
+
       data.moduleName = moduleName;
       importInfos.push({ data, transformNode });
       deferQueue.removes.add(() => state.remove(ancestors));
 
       deferQueue.exportNamespaces.add({
         moduleId,
+        namespace,
         fn: (names) => {
           names.forEach((name) => {
-            const refNode = memberExpression(
-              identifier(moduleName),
-              identifier(name),
-            );
+            let refNode;
+            if (name === namespace) {
+              refNode = callExpression(identifier(__VIRTUAL_NAMESPACE__), [
+                identifier(moduleName),
+              ]);
+            } else {
+              refNode = memberExpression(
+                identifier(moduleName),
+                identifier(name),
+              );
+            }
             exportInfos.push({ refNode, name });
           });
         },
@@ -395,8 +404,9 @@ export function transform(opts) {
 
   function generateCode() {
     const nameCounts = {};
-    deferQueue.exportNamespaces.forEach(({ moduleId }) => {
-      childModuleExports(moduleId).forEach((name) => {
+    deferQueue.exportNamespaces.forEach(({ moduleId, namespace }) => {
+      const exports = namespace ? [namespace] : childModuleExports(moduleId);
+      exports.forEach((name) => {
         if (!nameCounts[name]) {
           nameCounts[name] = 1;
         } else {
@@ -405,9 +415,10 @@ export function transform(opts) {
       });
     });
 
-    deferQueue.exportNamespaces.forEach(({ fn, moduleId }) => {
+    deferQueue.exportNamespaces.forEach(({ fn, moduleId, namespace }) => {
       // `export namespace` 变量的去重
-      const exports = childModuleExports(moduleId).filter((name) => {
+      let exports = namespace ? [namespace] : childModuleExports(moduleId);
+      exports = exports.filter((name) => {
         if (name === 'default') return false;
         if (nameCounts[name] > 1) return false;
         return exportInfos.every((val) => val.name !== name);

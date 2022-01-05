@@ -210,11 +210,6 @@ export function isExportDeclaration(node) {
   return false;
 }
 
-export function isExportNamespaceSpecifier(node) {
-  if (!node) return false;
-  return node.type === 'ExportNamespaceSpecifier';
-}
-
 export function isExportDefaultDeclaration(node) {
   if (!node) return false;
   return node.type === 'ExportDefaultDeclaration';
