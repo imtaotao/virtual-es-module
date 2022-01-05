@@ -15,17 +15,16 @@ import {
 } from './types';
 
 export const collectorVisitor = {
-  // for (var i = 0; ...) {}
   ForStatement(node, state) {
     const { init } = node;
     if (isVar(init)) {
       const scope = state.scopes.get(node);
       const parent =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
-
       for (const decl of init.declarations) {
-        if (isIdentifier(decl.id)) {
-          parent.registerBinding('var', decl.id.name, decl);
+        const ids = state.getBindingIdentifiers(decl.id);
+        for (const name of ids) {
+          parent.registerBinding('var', name, decl);
         }
       }
     }
@@ -49,6 +48,7 @@ export const collectorVisitor = {
   },
 
   ImportDeclaration(node, state) {
+    console.log(node, 'import');
     const scope = state.scopes.get(node);
     const parent = state.getBlockParent(scope);
     parent.registerDeclaration(node);
@@ -69,7 +69,10 @@ export const collectorVisitor = {
     const scope = state.scopes.get(node);
     const { left } = node;
     if (isPattern(left) || isIdentifier(left)) {
-      scope.registerConstantViolation(left.name, node);
+      const ids = state.getBindingIdentifiers(left);
+      for (const name of ids) {
+        scope.registerConstantViolation(name, node);
+      }
     } else if (isVar(left)) {
       const parentScope =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
@@ -106,7 +109,7 @@ export const collectorVisitor = {
 
   AssignmentExpression(node, state) {
     state.defer.assignments.add(() => {
-      return { node, name: node.left.name };
+      return { node, ids: state.getBindingIdentifiers(node.left) };
     });
   },
 
@@ -126,14 +129,20 @@ export const collectorVisitor = {
 
   CatchClause(node, state) {
     const scope = state.scopes.get(node);
-    scope.registerBinding('let', node.param.name, node);
+    const ids = state.getBindingIdentifiers(node.param);
+    for (const name of ids) {
+      scope.registerBinding('let', name, node);
+    }
   },
 
   Function(node, state) {
     const { params } = node;
     const scope = state.scopes.get(node);
     for (const param of params) {
-      scope.registerBinding('param', param.name, param);
+      const ids = state.getBindingIdentifiers(param);
+      for (const name of ids) {
+        scope.registerBinding('param', name, param);
+      }
     }
     // Register function expression id after params. When the id
     // collides with a function param, the id effectively can't be

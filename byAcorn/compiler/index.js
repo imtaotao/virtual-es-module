@@ -2,16 +2,33 @@ import { Parser } from 'acorn';
 import { ancestor } from 'acorn-walk';
 import { generate } from 'escodegen';
 import { createState } from './state';
+import * as t from '@babel/types';
 import { moduleResource } from '../execCode';
 import {
   isIdentifier,
   isVariableDeclaration,
-  isExportAllDeclaration,
   isImportDefaultSpecifier,
   isImportNamespaceSpecifier,
+  isExportSpecifier,
+  isExportAllDeclaration,
   isExportNamespaceSpecifier,
   isExportDefaultDeclaration,
 } from './types';
+import {
+  literal,
+  identifier,
+  callExpression,
+  objectProperty,
+  blockStatement,
+  objectExpression,
+  memberExpression,
+  variableDeclarator,
+  variableDeclaration,
+  expressionStatement,
+  functionDeclaration,
+  assignmentExpression,
+  arrowFunctionExpression,
+} from './generated';
 
 export const __VIRTUAL_WRAPPER__ = '__VIRTUAL_WRAPPER__';
 const __VIRTUAL_IMPORT__ = '__VIRTUAL_IMPORT__';
@@ -20,6 +37,8 @@ const __VIRTUAL_DEFAULT__ = '__VIRTUAL_DEFAULT__';
 const __VIRTUAL_NAMESPACE__ = '__VIRTUAL_NAMESPACE__';
 const __VIRTUAL_IMPORT_META__ = '__VIRTUAL_IMPORT_META__';
 const __VIRTUAL_DYNAMIC_IMPORT__ = '__VIRTUAL_DYNAMIC_IMPORT__';
+
+window.t = t;
 
 function childModuleExports(moduleId) {
   return moduleResource[moduleId].exports;
@@ -78,53 +97,59 @@ function checkImportNames(imports, moduleId) {
   });
 }
 
-function hasUseEsmVars(scope, node) {
-  const hasUse = (scope) =>
-    Object.keys(scope.bindings).some((key) => {
-      const varItem = scope.bindings[key];
-      if (varItem.kind === 'module') {
-        if (varItem.references.some((n) => n === node)) {
-          return true;
-        }
-        return varItem.constantViolations.some((n) => n.left === node);
-      }
-    });
-  while (scope) {
-    if (hasUse(scope)) return true;
-    scope = scope.parent;
-  }
-  return false;
-}
-
 function createImportTransformNode(moduleName, moduleId) {
-  const varName = t.identifier(moduleName);
-  const varExpr = t.callExpression(t.identifier(__VIRTUAL_IMPORT__), [
-    t.stringLiteral(moduleId),
+  const varName = identifier(moduleName);
+  const varExpr = callExpression(identifier(__VIRTUAL_IMPORT__), [
+    literal(moduleId),
   ]);
-  const varNode = t.variableDeclarator(varName, varExpr);
-  return t.variableDeclaration('const', [varNode]);
+  const varNode = variableDeclarator(varName, varExpr);
+  return variableDeclaration('const', [varNode]);
 }
 
 function createVirtualModuleApi(ast, importInfos, exportInfos) {
   const exportNodes = exportInfos.map(({ name, refNode }) => {
-    return t.objectProperty(
-      t.identifier(name),
-      t.arrowFunctionExpression([], refNode),
+    return objectProperty(
+      identifier(name),
+      arrowFunctionExpression([], refNode),
     );
   });
-  const exportCallExpression = t.callExpression(
-    t.identifier(__VIRTUAL_EXPORT__),
-    [t.objectExpression(exportNodes)],
-  );
-  ast.program.body.unshift(
+  const exportCallExpression = callExpression(identifier(__VIRTUAL_EXPORT__), [
+    objectExpression(exportNodes),
+  ]);
+  ast.body.unshift(
     exportCallExpression,
     ...new Set(importInfos.map((val) => val.transformNode)),
   );
 }
 
+function createWrapperFunction(ast) {
+  const params = [
+    __VIRTUAL_IMPORT__,
+    __VIRTUAL_EXPORT__,
+    __VIRTUAL_NAMESPACE__,
+    __VIRTUAL_IMPORT_META__,
+    __VIRTUAL_DYNAMIC_IMPORT__,
+  ].map((key) => identifier(key));
+  const id = identifier(__VIRTUAL_WRAPPER__);
+  const directive = expressionStatement(literal('use strict'), 'use strict');
+  ast.body = [
+    functionDeclaration(id, params, blockStatement([directive, ...ast.body])),
+  ];
+}
+
 export function transform(opts) {
+  let moduleCount = 0;
+  const importInfos = [];
+  const exportInfos = [];
+  const deferQueue = {
+    removes: new Set(),
+    importChecks: new Set(),
+    identifierRefs: new Set(),
+    exportNamespaces: new Set(),
+  };
   const parser = new Parser({ sourceType: 'module' }, opts.code);
   const ast = parser.parse();
+  console.log(ast);
   const state = createState(ast);
 
   const findIndxInData = (refName, data) => {
@@ -154,6 +179,25 @@ export function transform(opts) {
     return [];
   };
 
+  const hasUseEsmVars = (node) => {
+    let scope = state.scopes.get(node);
+    const hasUse = () =>
+      Object.keys(scope.bindings).some((key) => {
+        const varItem = scope.bindings[key];
+        if (varItem.kind === 'module') {
+          if (varItem.references.has(node)) {
+            return true;
+          }
+          return [...varItem.constantViolations].some((n) => n.left === node);
+        }
+      });
+    while (scope) {
+      if (hasUse()) return true;
+      scope = scope.parent;
+    }
+    return false;
+  };
+
   // 替换为 `__mo__.x`;
   const importReplaceNode = (nameOrInfo) => {
     const { i, data } =
@@ -161,16 +205,109 @@ export function transform(opts) {
     if (data) {
       const item = data.imports[i];
       if (item.isNamespace) {
-        return t.callExpression(t.identifier(__VIRTUAL_NAMESPACE__), [
-          t.identifier(data.moduleName),
+        return callExpression(identifier(__VIRTUAL_NAMESPACE__), [
+          identifier(data.moduleName),
         ]);
       } else {
         const propName = item.isDefault ? 'default' : item.name;
-        return t.memberExpression(
-          t.identifier(data.moduleName),
-          t.identifier(propName),
+        return memberExpression(
+          identifier(data.moduleName),
+          identifier(propName),
         );
       }
+    }
+  };
+
+  const ExportDeclaration = (node, state, ancestors) => {
+    ancestors = [...ancestors];
+    const { specifiers, declaration } = node;
+
+    if (declaration) {
+      const isDefault = isExportDefaultDeclaration(node);
+      const nodes = isVariableDeclaration(declaration)
+        ? declaration.declarations
+        : [declaration];
+
+      nodes.forEach((node) => {
+        let name, refNode;
+        if (isDefault) {
+          name = 'default';
+          refNode = identifier(__VIRTUAL_DEFAULT__);
+        } else {
+          name = node.name ? node.name : node.id.name;
+          refNode = identifier(name);
+        }
+        exportInfos.push({ name, refNode });
+      });
+
+      if (isDefault) {
+        const varName = identifier(__VIRTUAL_DEFAULT__);
+        const varNode = variableDeclarator(varName, declaration);
+        state.replaceWith(variableDeclaration('const', [varNode]), ancestors);
+      } else if (isIdentifier(declaration)) {
+        deferQueue.removes.add(() => state.remove(ancestors));
+      } else {
+        state.replaceWith(declaration, ancestors);
+      }
+    } else if (specifiers) {
+      const { source } = node;
+      if (source) {
+        const moduleId = source.value;
+        const data = importInformationBySource(node);
+        let [moduleName, transformNode] = findImportInfo(moduleId);
+        if (!moduleName) {
+          moduleName = `__m${moduleCount++}__`;
+          transformNode = createImportTransformNode(moduleName, moduleId);
+        }
+        data.moduleName = moduleName;
+        importInfos.push({ data, transformNode });
+        deferQueue.importChecks.add(() =>
+          checkImportNames(data.imports, moduleId),
+        );
+        specifiers.forEach((n) => {
+          let refName;
+          if (isExportNamespaceSpecifier(n)) {
+            refName = n.exported.name;
+          } else {
+            refName = n.local.name;
+          }
+          const useInfo = findIndxInData(refName, data);
+          const refNode = importReplaceNode(useInfo);
+          exportInfos.push({ refNode, name: n.exported.name });
+        });
+      } else {
+        specifiers.forEach((n) => {
+          const refNode = hasUseEsmVars(n.local)
+            ? importReplaceNode(n.local.name)
+            : identifier(n.local.name);
+          exportInfos.push({ refNode, name: n.exported.name });
+        });
+      }
+      deferQueue.removes.add(() => state.remove(ancestors));
+    } else if (isExportAllDeclaration(node)) {
+      const moduleId = node.source.value;
+      const data = importInformationBySource(node);
+      let [moduleName, transformNode] = findImportInfo(moduleId);
+      if (!moduleName) {
+        moduleName = `__m${moduleCount++}__`;
+        transformNode = createImportTransformNode(moduleName, moduleId);
+      }
+      data.moduleName = moduleName;
+      importInfos.push({ data, transformNode });
+      deferQueue.removes.add(() => state.remove(ancestors));
+
+      deferQueue.exportNamespaces.add({
+        moduleId,
+        fn: (names) => {
+          names.forEach((name) => {
+            const refNode = memberExpression(
+              identifier(moduleName),
+              identifier(name),
+            );
+            exportInfos.push({ refNode, name });
+          });
+        },
+      });
     }
   };
 
@@ -179,7 +316,13 @@ export function transform(opts) {
   ancestor(
     ast,
     {
+      // export 声明
+      ExportAllDeclaration: ExportDeclaration,
+      ExportNamedDeclaration: ExportDeclaration,
+      ExportDefaultDeclaration: ExportDeclaration,
+
       ImportDeclaration(node, state, ancestors) {
+        ancestors = [...ancestors];
         const moduleId = node.source.value;
         const data = importInformation(node);
         let [moduleName, transformNode] = findImportInfo(moduleId);
@@ -187,26 +330,94 @@ export function transform(opts) {
           moduleName = `__m${moduleCount++}__`;
           transformNode = createImportTransformNode(moduleName, moduleId);
         }
-
-        console.log(data);
         data.moduleName = moduleName;
         importInfos.push({ data, transformNode });
-        deferQueue.importRemoves.add(() => {
-          state.remove(node, ancestors);
-        });
+        deferQueue.removes.add(() => state.remove(ancestors));
         deferQueue.importChecks.add(() =>
           checkImportNames(data.imports, moduleId),
         );
+      },
+
+      ImportExpression(node, state, ancestors) {
+        const replacement = callExpression(
+          identifier(__VIRTUAL_DYNAMIC_IMPORT__),
+          [node.source],
+        );
+        state.replaceWith(replacement, ancestors);
+      },
+
+      MetaProperty(node, state, ancestors) {
+        if (node.meta.name === 'import') {
+          const replacement = memberExpression(
+            identifier(__VIRTUAL_IMPORT_META__),
+            node.property,
+          );
+          state.replaceWith(replacement, ancestors);
+        }
+      },
+
+      // 引用替换
+      Identifier(node, state, ancestors) {
+        const parent = ancestors[ancestors.length - 2];
+        if (isExportSpecifier(parent)) return;
+        console.log(node, state.scopes.get(node), hasUseEsmVars(node));
+        if (hasUseEsmVars(node)) {
+          ancestors = [...ancestors];
+          deferQueue.identifierRefs.add(() => {
+            const replacement = importReplaceNode(node.name);
+            if (replacement) {
+              state.replaceWith(replacement, ancestors);
+            }
+          });
+        }
       },
     },
     null,
     state,
   );
 
-  function generateCode() {}
+  function generateCode() {
+    const nameCounts = {};
+    deferQueue.exportNamespaces.forEach(({ moduleId }) => {
+      childModuleExports(moduleId).forEach((name) => {
+        if (!nameCounts[name]) {
+          nameCounts[name] = 1;
+        } else {
+          nameCounts[name]++;
+        }
+      });
+    });
+
+    deferQueue.exportNamespaces.forEach(({ fn, moduleId }) => {
+      // `export namespace` 变量的去重
+      const exports = childModuleExports(moduleId).filter((name) => {
+        if (name === 'default') return false;
+        if (nameCounts[name] > 1) return false;
+        return exportInfos.every((val) => val.name !== name);
+      });
+      fn(exports);
+    });
+
+    deferQueue.importChecks.forEach((fn) => fn());
+    deferQueue.identifierRefs.forEach((fn) => fn());
+    deferQueue.removes.forEach((fn) => fn());
+
+    // 生成转换后的代码
+    createVirtualModuleApi(ast, importInfos, exportInfos);
+    createWrapperFunction(ast);
+
+    console.log(ast, opts.filename);
+    const code = generate(ast);
+    console.log(code);
+    return {
+      code,
+    };
+  }
 
   return {
     generateCode,
+    // exports: [],
+    // imports: [],
     exports: exportInfos.map((v) => v.name),
     imports: importInfos.map((v) => v.data),
   };

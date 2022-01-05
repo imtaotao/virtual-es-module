@@ -73,6 +73,26 @@ export function isFunction(node) {
   return false;
 }
 
+export function isRestElement(node) {
+  if (!node) return false;
+  return 'RestElement' === node.type;
+}
+
+export function isArrayPattern(node) {
+  if (!node) return false;
+  return 'ArrayPattern' === node.type;
+}
+
+export function isObjectPattern(node) {
+  if (!node) return false;
+  return 'ObjectPattern' === node.type;
+}
+
+export function isAssignmentPattern(node) {
+  if (!node) return false;
+  return 'AssignmentPattern' === node.type;
+}
+
 export function isPattern(node) {
   if (!node) return false;
   const nodeType = node.type;
@@ -193,6 +213,11 @@ export function isExportNamespaceSpecifier(node) {
 export function isExportDefaultDeclaration(node) {
   if (!node) return false;
   return node.type === 'ExportDefaultDeclaration';
+}
+
+export function isExportSpecifier(node) {
+  if (!node) return false;
+  return node.type === 'ExportSpecifier';
 }
 
 export function isImportDeclaration(node) {

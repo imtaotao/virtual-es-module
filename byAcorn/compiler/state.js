@@ -5,13 +5,17 @@ import { collectorVisitor } from './collectorVisitor';
 import {
   isScope,
   isProgram,
+  isIdentifier,
   isBlockScoped,
   isDeclaration,
   isBlockParent,
+  isRestElement,
+  isArrayPattern,
+  isObjectPattern,
+  isAssignmentPattern,
   isForXStatement,
   isFunctionParent,
   isExportDeclaration,
-  isVariableDeclaration,
 } from './types';
 
 const virtualTypes = {
@@ -66,6 +70,23 @@ function getParentScope(scope, condition) {
   return null;
 }
 
+export function getBindingIdentifiers(node) {
+  const f = (node) => {
+    if (isIdentifier(node)) {
+      return [node.name];
+    } else if (isArrayPattern(node)) {
+      return node.elements.map((el) => f(el)).flat();
+    } else if (isObjectPattern(node)) {
+      return node.properties.map((p) => f(p.value)).flat();
+    } else if (isAssignmentPattern(node)) {
+      return f(node.left);
+    } else if (isRestElement(node)) {
+      return f(node.argument);
+    }
+  };
+  return f(node);
+}
+
 export function createState(ast) {
   const state = {
     scopes: new WeakMap(),
@@ -75,6 +96,8 @@ export function createState(ast) {
       assignments: new Set(),
       constantViolations: new Set(),
     },
+
+    getBindingIdentifiers,
 
     getFunctionParent(scope) {
       return getParentScope(scope, isFunctionParent);
@@ -94,26 +117,34 @@ export function createState(ast) {
       );
     },
 
-    remove(node, ancestors) {
-      this.replaceWith(node, null, ancestors);
+    remove(ancestors) {
+      this.replaceWith(null, ancestors);
     },
 
-    replaceWith(node, replacement, ancestors) {
+    replaceWith(replacement, ancestors) {
+      const l = ancestors.length;
+      const node = ancestors[l - 1];
       if (node === replacement) return;
-      const parent = ancestors[ancestors.length - 2];
+      const parent = ancestors[l - 2];
+
       const set = (obj, key) => {
         const scope = this.scopes.get(node);
-        obj[key] = replacement;
-        this.scopes.set(replacement, scope);
-        this.ancestors.set(replacement, ancestors);
+        if (replacement === null) {
+          // 删除后会影响遍历的顺序
+          Array.isArray(obj) ? obj.splice(key, 1) : delete obj[key];
+        } else {
+          obj[key] = replacement;
+          this.scopes.set(replacement, scope);
+          this.ancestors.set(replacement, ancestors);
+        }
       };
 
-      if (isVariableDeclaration(node)) {
-        const { declarations } = node;
-        const idx = declarations.indexOf(node);
-        if (idx > -1) set(declarations, key);
-      } else {
-        for (const key in parent) {
+      for (const key in parent) {
+        const children = parent[key];
+        if (Array.isArray(children)) {
+          const idx = children.indexOf(node);
+          if (idx > -1) set(children, idx);
+        } else {
           if (parent[key] === node) {
             set(parent, key);
           }
@@ -123,26 +154,33 @@ export function createState(ast) {
   };
 
   walk(ast, collectorVisitor, state);
+  console.log(state.scopes);
 
   const programParent = state.getProgramParent(state.scopes.get(ast));
 
   state.defer.assignments.forEach((fn) => {
-    const { name, node } = fn();
+    const { ids, node } = fn();
     const scope = state.scopes.get(node);
-    if (!scope.getBinding(name)) {
-      programParent.addGlobal(node);
+    for (const name of ids) {
+      if (!scope.getBinding(name)) {
+        programParent.addGlobal(node, name);
+      }
+      scope.registerConstantViolation(name, node);
     }
-    scope.registerConstantViolation(name, node);
   });
 
   state.defer.references.forEach((fn) => {
     const { type, node } = fn();
     const scope = state.scopes.get(node);
-    const binding = scope.getBinding(node.name);
-    if (binding) {
-      binding.references.add(node);
-    } else if (type !== 'export') {
-      programParent.addGlobal(node);
+    const ids = getBindingIdentifiers(node);
+    for (const name of ids) {
+      const binding = scope.getBinding(name);
+      console.log(scope, binding, node);
+      if (binding) {
+        binding.references.add(node);
+      } else if (type === 'identifier') {
+        programParent.addGlobal(node);
+      }
     }
   });
 

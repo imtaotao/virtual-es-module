@@ -11,6 +11,7 @@ import {
   isFunctionDeclaration,
   isArrowFunctionExpression,
 } from './types';
+import { getBindingIdentifiers } from './state';
 
 // type Kind =
 //  | "var" /* var declarator */
@@ -39,8 +40,8 @@ export class Scope {
     this.labels.set(node.label.name, node);
   }
 
-  addGlobal(node) {
-    this.globals[node.name] = node.name;
+  addGlobal(node, name) {
+    this.globals[name || node.name] = node;
   }
 
   reference(name, node) {
@@ -60,8 +61,9 @@ export class Scope {
   getBinding(name) {
     let scope = this;
     let previousNode;
+
     do {
-      const binding = this.bindings[name];
+      const binding = scope.bindings[name];
       if (binding) {
         // 函数自身的声明和参数不能被
         if (
@@ -75,6 +77,7 @@ export class Scope {
         }
       } else if (
         !binding &&
+        name === 'arguments' &&
         isFunction(scope.node) &&
         isArrowFunctionExpression(scope.node)
       ) {
@@ -87,7 +90,7 @@ export class Scope {
   checkBlockScopedCollisions(local, kind, name) {
     if (kind === 'param') return;
     // 函数自己的声明规范中是一个独立的作用域，可以被覆盖
-    if (binding.kind === 'local') return;
+    if (local.kind === 'local') return;
     if (
       kind === 'let' ||
       local.kind === 'let' ||
@@ -128,10 +131,13 @@ export class Scope {
     } else if (isFunctionDeclaration(node)) {
       this.registerBinding('hoisted', node.id.name, node);
     } else if (isVariableDeclaration(node)) {
-      const declar = node.declarations;
-      for (const decl of declar) {
+      const { declarations } = node;
+      for (const decl of declarations) {
         // node.kind 有 var, let, const
-        this.registerBinding(node.kind, decl.id.name, decl);
+        const ids = getBindingIdentifiers(decl.id);
+        for (const name of ids) {
+          this.registerBinding(node.kind, name, decl);
+        }
       }
     } else if (isClassDeclaration(node)) {
       if (node.declare) return;
@@ -142,13 +148,13 @@ export class Scope {
         this.registerBinding('module', specifier.local.name, specifier);
       }
     } else if (isExportDeclaration(node)) {
-      const declar = node.declaration;
+      const { declaration } = node;
       if (
-        isClassDeclaration(declar) ||
-        isFunctionDeclaration(declar) ||
-        isVariableDeclaration(declar)
+        isClassDeclaration(declaration) ||
+        isFunctionDeclaration(declaration) ||
+        isVariableDeclaration(declaration)
       ) {
-        this.registerDeclaration(declar);
+        this.registerDeclaration(declaration);
       }
     } else {
       this.registerBinding('unknown', node.exported.name, node);
