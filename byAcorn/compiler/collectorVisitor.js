@@ -80,7 +80,7 @@ export const collectorVisitor = {
   // `acorn` Identifier 没有算上 ExportNamedDeclaration 中的值
   ExportNamedDeclaration(node, state) {
     const { specifiers } = node;
-    if (Array.isArray(specifiers)) {
+    if (specifiers && specifiers.length > 0) {
       for (const { local } of specifiers) {
         state.defer.references.add(() => {
           const scope = state.scopes.get(node);
