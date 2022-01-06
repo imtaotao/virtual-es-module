@@ -381,7 +381,7 @@ export function transform(opts) {
     createVirtualModuleApi(ast, importInfos, exportInfos);
     createWrapperFunction(ast);
 
-    return generate(
+    const output = generate(
       ast,
       {
         sourceMaps: true,
@@ -392,6 +392,7 @@ export function transform(opts) {
         [opts.filename]: opts.code,
       },
     );
+    return output;
   }
 
   return {

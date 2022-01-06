@@ -1,3 +1,6 @@
+// The implementation of babel is mainly used to verify some behaviors,
+// assist and ensure the correctness of the implementation of acorn.
+
 import { transform } from './compiler';
 import { execCode, importModule, compileAndFetchCode } from './execCode';
 

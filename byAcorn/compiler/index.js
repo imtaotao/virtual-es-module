@@ -151,7 +151,12 @@ export function transform(opts) {
     exportNamespaces: new Set(),
   };
   const parser = new Parser(
-    { sourceType: 'module', ecmaVersion: 'latest' },
+    {
+      locations: true,
+      sourceType: 'module',
+      ecmaVersion: 'latest',
+      sourceFile: opts.filename,
+    },
     opts.code,
   );
   const ast = parseWrapper(parser, opts.filename);
@@ -428,9 +433,9 @@ export function transform(opts) {
     createWrapperFunction(ast);
 
     const output = generate(ast, {
-      sourceMap: opts.code,
+      sourceMap: opts.filename,
       sourceMapWithCode: true,
-      file: opts.filename,
+      sourceContent: opts.code,
     });
     return output;
   }
