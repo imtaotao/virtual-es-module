@@ -138,17 +138,23 @@ export class Compiler {
   }
 
   generateIdentifierTransformNode(nameOrInfo) {
-    const getRefModule = (refName) => {
+    let info;
+    if (typeof nameOrInfo === 'string') {
       for (const { data, isExport } of this.importInfos) {
         if (!isExport) {
-          const res = this.findIndexInData(refName, data);
-          if (res) return res;
+          const res = this.findIndexInData(nameOrInfo, data);
+          if (res) {
+            info = res;
+            break;
+          }
         }
       }
-    };
-    const { i, data } =
-      typeof nameOrInfo === 'string' ? getRefModule(nameOrInfo) : nameOrInfo;
-    if (data) {
+    } else {
+      info = nameOrInfo;
+    }
+
+    if (info && info.data) {
+      const { i, data } = info;
       const item = data.imports[i];
       if (item.isNamespace) {
         return callExpression(identifier(Compiler.keys.__VIRTUAL_NAMESPACE__), [
