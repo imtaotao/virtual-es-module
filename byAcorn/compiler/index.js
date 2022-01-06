@@ -251,13 +251,11 @@ export class Compiler {
         moduleName = `__m${this.moduleCount++}__`;
         transformNode = this.generateImportTransformNode(moduleName, moduleId);
       }
-
       data.moduleName = moduleName;
       this.importInfos.push({ data, transformNode });
       this.deferQueue.importChecks.add(() =>
         this.checkImportNames(data.imports, moduleId),
       );
-
       node.specifiers.forEach((n) => {
         const useInfo = this.findIndexInData(n.local.name, data);
         const refNode = this.generateIdentifierTransformNode(useInfo);
@@ -323,7 +321,6 @@ export class Compiler {
       moduleName = `__m${this.moduleCount++}__`;
       transformNode = this.generateImportTransformNode(moduleName, moduleId);
     }
-
     data.moduleName = moduleName;
     this.importInfos.push({ data, transformNode });
     this.deferQueue.removes.add(() => state.remove(ancestors));
@@ -389,7 +386,6 @@ export class Compiler {
       moduleName = `__m${this.moduleCount++}__`;
       transformNode = this.generateImportTransformNode(moduleName, moduleId);
     }
-
     data.moduleName = moduleName;
     this.importInfos.push({ data, transformNode });
     this.deferQueue.removes.add(() => state.remove(ancestors));
