@@ -37,7 +37,6 @@ function walk(node, visitors, state) {
     const isNew = node !== ancestors[ancestors.length - 1];
     const isCurrentNode = type === node.type;
     const virtualFnKeys = virtualTypesKeys.filter((k) => virtualTypes[k](node));
-
     if (isNew) ancestors.push(node);
     if (isCurrentNode) {
       state.ancestors.set(node, [...ancestors]);
@@ -48,9 +47,8 @@ function walk(node, visitors, state) {
       }
       state.scopes.set(node, scope);
     }
-
+    // 递归调用
     baseVisitor[type](node, st, call);
-
     if (found) found(node, st || ancestors, ancestors);
     if (isCurrentNode && virtualFnKeys.length > 0) {
       for (const key of virtualFnKeys) {
@@ -91,6 +89,34 @@ export function getBindingIdentifiers(node) {
   return f(node);
 }
 
+function execDeferQueue(state) {
+  const programParent = state.programParent;
+  state.defer.assignments.forEach((fn) => {
+    const { ids, scope } = fn();
+    for (const node of ids) {
+      if (!scope.getBinding(node.name)) {
+        programParent.addGlobal(node);
+      }
+      scope.registerConstantViolation(node.name, node);
+    }
+  });
+  state.defer.references.forEach((fn) => {
+    const { ids, type, scope } = fn();
+    for (const node of ids) {
+      const binding = scope.getBinding(node.name);
+      if (binding) {
+        binding.references.add(node);
+      } else if (type === 'identifier') {
+        programParent.addGlobal(node);
+      }
+    }
+  });
+  state.defer.constantViolations.forEach((fn) => {
+    const { node, scope } = fn();
+    scope.registerConstantViolation(node.name, node);
+  });
+}
+
 export function createState(ast) {
   const state = {
     scopes: new WeakMap(),
@@ -99,6 +125,10 @@ export function createState(ast) {
       references: new Set(),
       assignments: new Set(),
       constantViolations: new Set(),
+    },
+
+    get programParent() {
+      return this.getProgramParent(state.scopes.get(ast));
     },
 
     getBindingIdentifiers,
@@ -183,35 +213,6 @@ export function createState(ast) {
   };
 
   walk(ast, collectorVisitor, state);
-  const programParent = state.getProgramParent(state.scopes.get(ast));
-
-  state.defer.assignments.forEach((fn) => {
-    const { ids, scope } = fn();
-    for (const node of ids) {
-      if (!scope.getBinding(node.name)) {
-        programParent.addGlobal(node);
-      }
-      scope.registerConstantViolation(node.name, node);
-    }
-  });
-
-  state.defer.references.forEach((fn) => {
-    const { ids, type, scope } = fn();
-    for (const node of ids) {
-      const binding = scope.getBinding(node.name);
-      if (binding) {
-        binding.references.add(node);
-      } else if (type === 'identifier') {
-        programParent.addGlobal(node);
-      }
-    }
-  });
-
-  state.defer.constantViolations.forEach((fn) => {
-    const { node, scope } = fn();
-    scope.registerConstantViolation(node.name, node);
-  });
-
-  delete state.defer;
+  execDeferQueue(state);
   return state;
 }
