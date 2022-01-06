@@ -1,5 +1,6 @@
 import path from 'path';
 import json from '@rollup/plugin-json';
+import cleanup from 'rollup-plugin-cleanup';
 import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
@@ -72,6 +73,7 @@ function createConfig(format, output) {
     output,
     external,
     plugins: [
+      cleanup(),
       json({
         namedExports: false,
       }),

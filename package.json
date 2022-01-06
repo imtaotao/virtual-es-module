@@ -31,6 +31,7 @@
     "@rollup/plugin-node-resolve": "^13.1.1",
     "@rollup/plugin-replace": "^3.0.0",
     "prettier": "^2.5.1",
-    "rollup": "^2.62.0"
+    "rollup": "^2.62.0",
+    "rollup-plugin-cleanup": "^3.2.1"
   }
 }
