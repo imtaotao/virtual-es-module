@@ -157,11 +157,6 @@ export function transform(opts) {
   const ast = parseWrapper(parser, opts.filename);
   const state = createState(ast);
 
-  const isDebug = opts.filename.includes('m4.js');
-  if (isDebug) {
-    console.log(ast);
-  }
-
   const findIndxInData = (refName, data) => {
     for (let i = 0; i < data.imports.length; i++) {
       const { name, alias } = data.imports[i];
@@ -298,9 +293,6 @@ export function transform(opts) {
         });
       } else {
         specifiers.forEach((n) => {
-          if (opts.filename === './m3.js') {
-            console.log(n, scope, hasUseEsmVars(scope, n.local));
-          }
           const refNode = hasUseEsmVars(scope, n.local)
             ? importReplaceNode(n.local.name)
             : identifier(n.local.name);
