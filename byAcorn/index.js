@@ -1,4 +1,4 @@
-import { transform } from './compiler/index';
+import { Compiler } from './compiler/index';
 import { execCode, importModule, compileAndFetchCode } from './execCode';
 
 export async function startByUrl(entry) {
@@ -12,10 +12,8 @@ export async function startByCode(originCode, filename, metaUrl) {
   if (!filename) throw new Error('Missing filename');
   if (!metaUrl) metaUrl = filename;
 
-  const { imports, exports, generateCode } = transform({
-    filename,
-    code: originCode,
-  });
+  const compiler = new Compiler({ filename, code: originCode });
+  const { imports, exports, generateCode } = compiler.transform();
   await Promise.all(
     imports.map(({ moduleId }) => compileAndFetchCode(moduleId, metaUrl)),
   );

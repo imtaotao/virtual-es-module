@@ -1,4 +1,4 @@
-import { transform, __VIRTUAL_WRAPPER__ } from './compiler/index';
+import { Compiler } from './compiler/index';
 import { createImportMeta, createNamespaceModule } from './module';
 
 const namespaceStore = new WeakMap();
@@ -44,7 +44,7 @@ export function execCode(url, module, code, map) {
   };
 
   (0, eval)(`${code}\n//${url}${sourcemap}`);
-  const actuator = globalThis[__VIRTUAL_WRAPPER__];
+  const actuator = globalThis[Compiler.keys.__VIRTUAL_WRAPPER__];
 
   actuator(
     importModule,
@@ -74,10 +74,8 @@ export function compileAndFetchCode(curModule, baseUrl) {
       return res.text();
     })
     .then(async (code) => {
-      const { imports, exports, generateCode } = transform({
-        code,
-        filename: curModule,
-      });
+      const compiler = new Compiler({ code, filename: curModule });
+      const { imports, exports, generateCode } = compiler.transform();
       await Promise.all(
         imports.map(({ moduleId }) => compileAndFetchCode(moduleId, url)),
       );

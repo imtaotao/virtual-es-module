@@ -119,6 +119,7 @@ export class Scope {
       // 如果顺利通过，则代表被更改了，重复的声明也是更改
       this.registerConstantViolation(name, node);
     } else {
+      // 我们的案例是 esModule, 里面不可能有 with 表达式
       this.bindings[name] = {
         kind,
         node,
