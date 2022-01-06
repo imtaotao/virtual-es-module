@@ -1,4 +1,4 @@
-Virtual es module for easy operation in the sandbox...
+Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 
 ## Feature
 
