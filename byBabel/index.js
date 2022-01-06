@@ -3,6 +3,7 @@
 
 import { transform } from './compiler';
 import { execCode, importModule, compileAndFetchCode } from './execCode';
+window.isBabel = true;
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');

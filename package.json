@@ -1,6 +1,6 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.1-beta.6",
+  "version": "0.0.1-beta.7",
   "description": "es module polyfill.",
   "types": "dist/src",
   "main": "index.js",
@@ -17,16 +17,15 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@babel/core": "^7.15.8",
-    "@babel/generator": "^7.16.5",
-    "@babel/parser": "^7.16.6",
-    "@babel/traverse": "^7.16.5",
-    "@babel/types": "^7.16.0",
     "acorn": "^8.7.0",
     "acorn-walk": "^8.2.0",
     "escodegen": "^2.0.0"
   },
   "devDependencies": {
+    "@babel/generator": "^7.16.5",
+    "@babel/parser": "^7.16.6",
+    "@babel/traverse": "^7.16.5",
+    "@babel/types": "^7.16.0",
     "@rollup/plugin-commonjs": "^21.0.1",
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.1.1",

@@ -71,4 +71,3 @@ if (typeof document !== 'undefined') {
     );
   }
 }
-// startByUrl('./m3.js');
