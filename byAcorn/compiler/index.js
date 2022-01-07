@@ -75,19 +75,21 @@ export class Compiler {
 
   checkImportNames(imports, moduleId) {
     const exports = this.getChildModuleExports(moduleId);
-    imports.forEach((item) => {
-      if (item.isNamespace) return;
-      const checkName = item.isDefault ? 'default' : item.name;
-      if (!exports.includes(checkName)) {
-        throw SyntaxError(
-          `(${this.opts.filename}): The module '${moduleId}' does not provide an export named '${checkName}'`,
-        );
-      }
-    });
+    if (exports) {
+      imports.forEach((item) => {
+        if (item.isNamespace) return;
+        const checkName = item.isDefault ? 'default' : item.name;
+        if (!exports.includes(checkName)) {
+          throw SyntaxError(
+            `(${this.opts.filename}): The module '${moduleId}' does not provide an export named '${checkName}'`,
+          );
+        }
+      });
+    }
   }
 
   getChildModuleExports(moduleId) {
-    return moduleResource[moduleId].exports;
+    return moduleResource[moduleId] && moduleResource[moduleId].exports;
   }
 
   getImportInformation(node) {
@@ -415,8 +417,11 @@ export class Compiler {
   }
   generateCode() {
     const nameCounts = {};
-    const getExports = ({ namespace, moduleId }) =>
-      namespace ? [namespace] : this.getChildModuleExports(moduleId);
+    const getExports = ({ namespace, moduleId }) => {
+      return namespace
+        ? [namespace]
+        : this.getChildModuleExports(moduleId) || [];
+    };
 
     this.deferQueue.exportNamespaces.forEach((val) => {
       getExports(val).forEach((name) => {

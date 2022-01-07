@@ -35,7 +35,12 @@ export async function startByScriptTags(typeFlag) {
     const parts = url.pathname.split('/');
     const last = parts[parts.length - 1];
     if (!last || (!last.includes('.') && last !== 'index')) {
-      parts.push(`index(js:${i})`);
+      const file = `index(js:${i})`;
+      if (last === '') {
+        parts[parts.length - 1] = file;
+      } else {
+        parts.push(file);
+      }
     }
     url.pathname = parts.join('/');
     return url.toString();

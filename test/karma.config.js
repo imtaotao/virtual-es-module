@@ -13,6 +13,7 @@ module.exports = (config) => {
     files: [
       '../dist/virtual-esm.umd.js',
       'script/*.spec.js',
+      'script/utils.js',
       {
         pattern: 'script/files/*.js',
         included: false,

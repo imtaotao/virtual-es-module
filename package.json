@@ -7,7 +7,6 @@
   "module": "dist/virtual-esm.esm-bundler.js",
   "scripts": {
     "build": "rollup --config",
-    "serve": "http-server ./",
     "test": "karma start test/karma.config.js",
     "dev": "rollup --config -w | http-server ./",
     "format": "prettier --write --parser typescript \"(byAcorn|byBabel|test)/**/*.(js|ts?(x))\""

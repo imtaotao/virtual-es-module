@@ -13,6 +13,9 @@ function transformUrl(resolvePath, curPath) {
 
 export function importModule(moduleId) {
   if (!moduleStore[moduleId]) {
+    if (!moduleResource[moduleId]) {
+      throw new Error(`Module '${moduleId}' not found`);
+    }
     const { code, map, url } = moduleResource[moduleId];
     const module = (moduleStore[moduleId] = {});
     execCode(url, module, code, map);
@@ -74,15 +77,19 @@ export function compileAndFetchCode(curModule, baseUrl) {
       return res.status >= 400 ? '' : res.text();
     })
     .then(async (code) => {
-      const compiler = new Compiler({ code, filename: curModule });
-      const { imports, exports, generateCode } = compiler.transform();
-      await Promise.all(
-        imports.map(({ moduleId }) => compileAndFetchCode(moduleId, url)),
-      );
-      const output = generateCode();
-      output.url = url;
-      output.exports = exports;
-      moduleResource[curModule] = output;
+      if (code) {
+        const compiler = new Compiler({ code, filename: curModule });
+        const { imports, exports, generateCode } = compiler.transform();
+        await Promise.all(
+          imports.map(({ moduleId }) => compileAndFetchCode(moduleId, url)),
+        );
+        const output = generateCode();
+        output.url = url;
+        output.exports = exports;
+        moduleResource[curModule] = output;
+      } else {
+        moduleResource[curModule] = null;
+      }
     });
   moduleResource[curModule] = p;
   return p;

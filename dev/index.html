@@ -15,11 +15,11 @@
   <script src="/dist/virtual-esm.umd.js"></script>
 
   <!-- virtual -->
-  <script type="virtual-module">
+  <!-- <script type="virtual-module">
     import * as _ from 'https://unpkg.com/lodash-es';
     console.log(_, 'lodash');
-  </script>
-  <script type="virtual-module">
+  </script> -->
+  <!-- <script type="virtual-module">
     console.log(import.meta);
     import * as m from './m4.js';
     import dd from './m4.js'
@@ -45,6 +45,14 @@
     setTimeout(() => {
       console.log(m6.a, a);
     })
+  </script> -->
+  <script type="virtual-module">
+    import ww, { default as w, a, b, c, d, fn1, fn2, cls } from './m7.js';
+
+    console.log(ww === w, a, b, c, d, fn1, fn2, cls);
+    setTimeout(() => {
+      console.log(a); 
+    });
   </script>
 </body>
 </html>
