@@ -68,7 +68,7 @@ export class Compiler {
     try {
       return parser.parse();
     } catch (e) {
-      e.message += `(${filename})`;
+      e.message += `(${this.opts.filename})`;
       throw e;
     }
   }
@@ -80,7 +80,7 @@ export class Compiler {
       const checkName = item.isDefault ? 'default' : item.name;
       if (!exports.includes(checkName)) {
         throw SyntaxError(
-          `The module '${moduleId}' does not provide an export named '${checkName}'`,
+          `(${this.opts.filename}): The module '${moduleId}' does not provide an export named '${checkName}'`,
         );
       }
     });

@@ -71,7 +71,7 @@ export function compileAndFetchCode(curModule, baseUrl) {
   const p = fetch(url)
     .then((res) => {
       url = res.url; // 可能重定向了
-      return res.text();
+      return res.status >= 400 ? '' : res.text();
     })
     .then(async (code) => {
       const compiler = new Compiler({ code, filename: curModule });
