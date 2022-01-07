@@ -1,5 +1,10 @@
 import { Compiler } from './compiler/index';
-import { execCode, importModule, compileAndFetchCode } from './execCode';
+import {
+  toBase64,
+  execCode,
+  importModule,
+  compileAndFetchCode,
+} from './execCode';
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');
@@ -20,6 +25,7 @@ export async function startByCode(originCode, filename, metaUrl) {
   const output = generateCode();
   output.url = metaUrl;
   output.exports = exports;
+  output.map = await toBase64(output.map.toString());
   const { code, map } = output;
   const module = {};
   return () => execCode(metaUrl, module, code, map);

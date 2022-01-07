@@ -11,6 +11,17 @@ function transformUrl(resolvePath, curPath) {
   return realPath.href;
 }
 
+// atob 对中文不友好
+export function toBase64(input) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(new Blob([input]));
+  });
+}
+
 export function importModule(moduleId) {
   if (!moduleStore[moduleId]) {
     if (!moduleResource[moduleId]) {
@@ -24,8 +35,7 @@ export function importModule(moduleId) {
 }
 
 export function execCode(url, module, code, map) {
-  const content = btoa(JSON.stringify(map));
-  const sourcemap = `\n//@ sourceMappingURL=data:application/json;base64,${content}`;
+  const sourcemap = `\n//@ sourceMappingURL=${map}`;
   const exportModule = (exportObject) => {
     Object.keys(exportObject).forEach((key) => {
       Object.defineProperty(module, key, {
@@ -81,11 +91,16 @@ export function compileAndFetchCode(curModule, baseUrl) {
         const compiler = new Compiler({ code, filename: curModule });
         const { imports, exports, generateCode } = compiler.transform();
         await Promise.all(
-          imports.map(({ moduleId }) => compileAndFetchCode(moduleId, url)),
+          imports.map(({ moduleId }) => {
+            return moduleResource[moduleId]
+              ? null
+              : compileAndFetchCode(moduleId, url);
+          }),
         );
         const output = generateCode();
         output.url = url;
         output.exports = exports;
+        output.map = await toBase64(output.map.toString());
         moduleResource[curModule] = output;
       } else {
         moduleResource[curModule] = null;

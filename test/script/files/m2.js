@@ -1,3 +1,6 @@
+// 测试各种 export 和变量更改检测
+export const name = 'm2.js';
+
 export var a = 1;
 export const b = 2;
 export let c = 3,
@@ -13,6 +16,12 @@ export class cls {
     return 'cls.world';
   }
 }
+
+function fn3() {
+  return 'fn3';
+}
+
+export { a as aa, fn3 as _fn3 };
 
 export default ['default'];
 

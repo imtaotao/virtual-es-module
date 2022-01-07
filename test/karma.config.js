@@ -1,6 +1,6 @@
 module.exports = (config) => {
   config.set({
-    singleRun: true,
+    // singleRun: true,
     browsers: ['Chrome'],
     frameworks: ['jasmine'],
     reporters: ['progress', 'mocha'],

@@ -1,3 +1,6 @@
+import * as t from './m8.js'
+console.log(t);
+
 export var a = 1;
 export const b = 2;
 export let c = 3, d = 4;
@@ -18,3 +21,12 @@ export default ['default'];
 setTimeout(() => {
   a = 'aa';
 })
+
+function fn3() {
+  return 'fn3';
+}
+
+export {
+  a as aa,
+  fn3 as _fn3,
+}
