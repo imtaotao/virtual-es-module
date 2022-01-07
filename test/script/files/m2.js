@@ -1,5 +1,5 @@
 // 测试各种 export 和变量更改检测
-export const name = 'm2.js';
+export const name = 'm2';
 
 export var a = 1;
 export const b = 2;

@@ -47,6 +47,7 @@ export function execCode(url, module, code, map) {
       });
     });
   };
+
   const getModuleNamespace = (module) => {
     if (namespaceStore.has(module)) {
       return namespaceStore.get(module);
@@ -67,9 +68,9 @@ export function execCode(url, module, code, map) {
     async (id) => {
       if (!moduleStore[id]) {
         await compileAndFetchCode(id, url);
-        const { code, map } = moduleResource[id];
+        const { code, map, url } = moduleResource[id];
         const module = (moduleStore[id] = {});
-        execCode(id, module, code, map);
+        execCode(url, module, code, map);
       }
       return getModuleNamespace(moduleStore[id]);
     },

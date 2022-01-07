@@ -12,7 +12,7 @@ import dd, {
   default as dd2,
 } from './m2.js';
 
-expect(name).toBe('m2.js');
+expect(name).toBe('m2');
 expect(dd.length).toBe(1);
 expect(dd[0]).toBe('default');
 expect(dd2 === dd).toBe(true);

@@ -21,6 +21,7 @@ module.exports = (config) => {
     ],
     preprocessors: {
       'script/*.spec.js': ['sourcemap'],
+      'script/files/*.js': ['sourcemap'],
     },
     proxies: {
       '/files': '/base/script/files',
