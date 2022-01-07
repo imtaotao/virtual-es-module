@@ -22,16 +22,18 @@ export function toBase64(input) {
   });
 }
 
-export function importModule(moduleId) {
-  if (!moduleStore[moduleId]) {
-    if (!moduleResource[moduleId]) {
+export function importModule(moduleId, baseUrl) {
+  const url = baseUrl ? transformUrl(baseUrl, moduleId) : moduleId;
+  if (!moduleStore[url]) {
+    console.log(url);
+    if (!moduleResource[url]) {
       throw new Error(`Module '${moduleId}' not found`);
     }
-    const { code, map, url } = moduleResource[moduleId];
-    const module = (moduleStore[moduleId] = {});
+    const { code, map, url } = moduleResource[url];
+    const module = (moduleStore[url] = {});
     execCode(url, module, code, map);
   }
-  return moduleStore[moduleId];
+  return moduleStore[url];
 }
 
 export function execCode(url, module, code, map) {
@@ -61,35 +63,35 @@ export function execCode(url, module, code, map) {
   const actuator = globalThis[Compiler.keys.__VIRTUAL_WRAPPER__];
 
   actuator(
-    importModule,
+    (moduleId) => importModule(moduleId, url),
     exportModule,
     getModuleNamespace,
     createImportMeta(url),
-    async (id) => {
-      if (!moduleStore[id]) {
-        await compileAndFetchCode(id, url);
-        const { code, map, url } = moduleResource[id];
+    async (moduleId) => {
+      if (!moduleStore[moduleId]) {
+        await compileAndFetchCode(moduleId, url);
+        const { code, map, url } = moduleResource[moduleId];
         const module = (moduleStore[id] = {});
         execCode(url, module, code, map);
       }
-      return getModuleNamespace(moduleStore[id]);
+      return getModuleNamespace(moduleStore[moduleId]);
     },
   );
 }
 
-export function compileAndFetchCode(curModule, baseUrl) {
-  if (moduleResource[curModule]) {
-    return moduleResource[curModule];
+export function compileAndFetchCode(moduleId, baseUrl) {
+  if (moduleResource[moduleId]) {
+    return moduleResource[moduleId];
   }
-  let url = baseUrl ? transformUrl(baseUrl, curModule) : curModule;
+  const url = baseUrl ? transformUrl(baseUrl, moduleId) : moduleId;
   const p = fetch(url)
-    .then((res) => {
-      url = res.url; // 可能重定向了
-      return res.status >= 400 ? '' : res.text();
+    .then(async (res) => {
+      const code = res.status >= 400 ? '' : await res.text();
+      return [code, res.url]; // 可能重定向了
     })
-    .then(async (code) => {
+    .then(async ([code, realUrl]) => {
       if (code) {
-        const compiler = new Compiler({ code, filename: curModule });
+        const compiler = new Compiler({ code, filename: moduleId });
         const { imports, exports, generateCode } = compiler.transform();
         await Promise.all(
           imports.map(({ moduleId }) => {
@@ -99,14 +101,15 @@ export function compileAndFetchCode(curModule, baseUrl) {
           }),
         );
         const output = generateCode();
-        output.url = url;
+        output.url = realUrl;
+        // output.realUrl = realUrl;
         output.exports = exports;
         output.map = await toBase64(output.map.toString());
-        moduleResource[curModule] = output;
+        moduleResource[moduleId] = output;
       } else {
-        moduleResource[curModule] = null;
+        moduleResource[moduleId] = null;
       }
     });
-  moduleResource[curModule] = p;
+  moduleResource[moduleId] = p;
   return p;
 }
