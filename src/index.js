@@ -70,7 +70,6 @@ export async function startByScriptTags(typeFlag) {
   execQueue.forEach((exec) => exec());
 }
 
-// 如果是在浏览器环境中，则直接执行代码
 if (typeof document !== 'undefined') {
   const typeFlag = 'virtual-module';
   if (document.readyState === 'complete') {
