@@ -1,3 +1,10 @@
+<div align="center">
+Virtual es module
+
+[![NPM version](https://img.shields.io/npm/v/virtual-es-module.svg?style=flat-square)](https://www.npmjs.com/package/virtual-es-module)
+
+</div>
+
 Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 
 ## Feature
