@@ -99,7 +99,11 @@ export const runtime = {
       })
       .then(async ([code, realUrl]) => {
         if (code) {
-          const compiler = new Compiler({ code, filename: storeId });
+          const compiler = new Compiler({
+            code,
+            storeId,
+            filename: storeId,
+          });
           const { imports, exports, generateCode } = compiler.transform();
           await Promise.all(
             imports.map(({ moduleId }) => {

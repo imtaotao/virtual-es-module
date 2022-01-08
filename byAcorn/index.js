@@ -13,7 +13,11 @@ export async function startByCode(originCode, filename, metaUrl) {
   if (!filename) throw new Error('Missing filename');
   if (!metaUrl) metaUrl = filename;
 
-  const compiler = new Compiler({ filename, code: originCode });
+  const compiler = new Compiler({
+    filename,
+    code: originCode,
+    storeId: metaUrl,
+  });
   const { imports, exports, generateCode } = compiler.transform();
   await Promise.all(
     imports.map(({ moduleId }) => {

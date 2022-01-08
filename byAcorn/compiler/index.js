@@ -1,8 +1,8 @@
 import { Parser } from 'acorn';
 import { ancestor } from 'acorn-walk';
 import { generate } from 'escodegen';
+import { runtime } from '../runtime';
 import { createState } from './state';
-import { moduleResource } from '../execCode';
 import {
   isIdentifier,
   isVariableDeclaration,
@@ -89,7 +89,9 @@ export class Compiler {
   }
 
   getChildModuleExports(moduleId) {
-    return moduleResource[moduleId] && moduleResource[moduleId].exports;
+    const storeId = runtime.transformUrl(this.opts.storeId, moduleId);
+    const output = runtime.store.modules[storeId];
+    return output ? output.exports : null;
   }
 
   getImportInformation(node) {
