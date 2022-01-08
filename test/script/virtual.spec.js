@@ -22,4 +22,24 @@ describe('Virtual import', () => {
   it('import meta', async () => {
     await startByUrl('./case/importMeta/m1.js');
   });
+
+  it('import check(import)', async () => {
+    let isError = false;
+    try {
+      await startByUrl('./case/importCheck/m1.js');
+    } catch {
+      isError = true;
+    }
+    expect(isError).toBe(true);
+  });
+
+  it('import check(export)', async () => {
+    let isError = false;
+    try {
+      await startByUrl('./case/importCheck/m2.js');
+    } catch {
+      isError = true;
+    }
+    expect(isError).toBe(true);
+  });
 });
