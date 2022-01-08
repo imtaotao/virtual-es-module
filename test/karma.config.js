@@ -20,6 +20,7 @@ module.exports = (config) => {
     ],
     preprocessors: {
       'script/*.spec.js': ['sourcemap'],
+      'script/case/**/*.spec.js': ['sourcemap'],
     },
     plugins: [
       'karma-jasmine',

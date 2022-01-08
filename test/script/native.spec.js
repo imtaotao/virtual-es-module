@@ -19,6 +19,14 @@ describe('Native import', () => {
     await import('./case/importMeta/m1.js');
   });
 
+  it('variable check', async () => {
+    await import('./case/variableCheck/m1.js');
+  });
+
+  it('resource redirect', async () => {
+    await import('./case/resourceRedirect/m1.js');
+  });
+
   it('import check(import)', async () => {
     let isError = false;
     try {
@@ -39,7 +47,13 @@ describe('Native import', () => {
     expect(isError).toBe(true);
   });
 
-  it('resource redirect', async () => {
-    await import('./case/resourceRedirect/m1.js');
+  it('strict mode check', async () => {
+    let isError = false;
+    try {
+      await import('./case/strictModeCheck/m1.js');
+    } catch {
+      isError = true;
+    }
+    expect(isError).toBe(true);
   });
 });

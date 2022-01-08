@@ -27,6 +27,14 @@ describe('Virtual import', () => {
     await startByUrl('./case/importMeta/m1.js');
   });
 
+  it('variable check', async () => {
+    await startByUrl('./case/variableCheck/m1.js');
+  });
+
+  it('resource redirect', async () => {
+    await startByUrl('./case/resourceRedirect/m1.js');
+  });
+
   it('import check(import)', async () => {
     let isError = false;
     try {
@@ -47,7 +55,13 @@ describe('Virtual import', () => {
     expect(isError).toBe(true);
   });
 
-  it('resource redirect', async () => {
-    await startByUrl('./case/resourceRedirect/m1.js');
+  it('strict mode check', async () => {
+    let isError = false;
+    try {
+      await import('./case/strictModeCheck/m1.js');
+    } catch {
+      isError = true;
+    }
+    expect(isError).toBe(true);
   });
 });
