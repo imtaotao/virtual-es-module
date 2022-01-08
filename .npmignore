@@ -1,12 +1,11 @@
 /node_modules
-/byAcorn
+/src
 /byBabel
+/dev
 /test
 .gitignore
 .npmignore
 .prettierrc
-index.html
 rollup.config.js
-tsconfig.json
 .DS_Store
 yarn.lock
