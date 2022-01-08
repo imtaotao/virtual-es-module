@@ -417,6 +417,7 @@ export class Compiler {
       state.replaceWith(replacement, ancestors);
     }
   }
+  
   generateCode() {
     const nameCounts = {};
     const getExports = ({ namespace, moduleId }) => {
