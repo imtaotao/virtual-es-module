@@ -12,14 +12,14 @@ describe('Virtual import', () => {
   });
 
   it('circular reference', async () => {
-    await startByUrl('./case/circularReference/m3.js');
+    await startByUrl('./case/circularReference/m1.js');
   });
 
   it('export namespace', async () => {
-    await startByUrl('./case/exportNamespace/m5.js');
+    await startByUrl('./case/exportNamespace/m1.js');
   });
 
   it('import meta', async () => {
-    await startByUrl('./case/importMeta/m9.js');
+    await startByUrl('./case/importMeta/m1.js');
   });
 });
