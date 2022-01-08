@@ -90,7 +90,7 @@ export class Compiler {
 
   getChildModuleExports(moduleId) {
     const storeId = runtime.transformUrl(this.opts.storeId, moduleId);
-    const output = runtime.store.modules[storeId];
+    const output = runtime.store.resources[storeId];
     return output ? output.exports : null;
   }
 

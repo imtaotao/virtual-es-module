@@ -15,36 +15,16 @@
   <script src="/dist/virtual-esm.umd.js"></script>
 
   <!-- virtual -->
-  <script type="virtual-module">
+  <!-- <script type="virtual-module">
     import * as _ from 'https://unpkg.com/lodash-es';
     console.log(_, 'lodash');
-  </script>
+  </script> -->
   <script type="virtual-module">
-    console.log(import.meta);
     import * as m from './files/m4.js';
-    import dd from './files/m4.js'
-    import {d} from './files/m4.js'
-    import './files/m4.js'
-    console.log(m, 'tao');
-    import { aa } from './files/m3.js';
-    console.log(aa, 'index1');
-    setTimeout(() => {
-      console.log(aa, 'index2');
-    })
-
-    import('./files/m3.js').then(mm => {
-      console.log(m === mm, mm, 22);
-    })
-  </script>
-
-  <script type="virtual-module">
-    import * as m6 from './files/m6.js';
-    import { a } from './files/m6.js';
-
-    console.log(m6.a, a);
-    setTimeout(() => {
-      console.log(m6.a, a);
-    })
+    console.log('-------');
+    console.log(Object.keys(m));
+    console.log(m);
+    console.log('-------');
   </script>
   <!-- <script type="virtual-module">
     import * as t from './files/m7.js';

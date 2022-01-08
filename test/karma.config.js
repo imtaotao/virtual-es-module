@@ -1,6 +1,6 @@
 module.exports = (config) => {
   config.set({
-    // singleRun: true,
+    singleRun: true,
     browsers: ['Chrome'],
     frameworks: ['jasmine'],
     reporters: ['progress', 'mocha'],
@@ -13,18 +13,16 @@ module.exports = (config) => {
     files: [
       '../dist/virtual-esm.umd.js',
       'script/*.spec.js',
-      'script/utils.js',
       {
-        pattern: 'script/files/*.js',
+        pattern: 'script/case/**/*.js',
         included: false,
       },
     ],
     preprocessors: {
       'script/*.spec.js': ['sourcemap'],
-      'script/files/*.js': ['sourcemap'],
     },
     proxies: {
-      '/files': '/base/script/files',
+      '/case': '/base/script/case',
     },
     plugins: [
       'karma-jasmine',

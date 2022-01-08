@@ -72,7 +72,7 @@ export const runtime = {
 
   execCode(output, module) {
     const sourcemap = `\n//@ sourceMappingURL=${output.map}`;
-    (0, eval)(`${output.code}\n//${output.storeId}${sourcemap}`);
+    (0, eval)(`${output.code}\n//${output.storeId}${''}`);
     const importMeta = createImportMeta(output.realUrl);
     const namespace = (module) => this.getModuleNamespace(module);
     const _export = (exportObject) => this.exportModule(module, exportObject);
