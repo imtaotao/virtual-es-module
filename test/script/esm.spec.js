@@ -5,5 +5,5 @@ describe('import', () => {
 
   it('circular reference', async () => {
     await startByUrl('./files/m3.js');
-  })
+  });
 });

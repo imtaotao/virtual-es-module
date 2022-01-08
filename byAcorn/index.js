@@ -2,14 +2,16 @@ import { Compiler } from './compiler/index';
 import {
   toBase64,
   execCode,
+  transformUrl,
   importModule,
   compileAndFetchCode,
 } from './execCode';
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');
-  await compileAndFetchCode(entry);
-  return () => importModule(entry);
+  const requestUrl = transformUrl(location.href, entry);
+  await compileAndFetchCode(requestUrl, requestUrl);
+  return () => importModule(requestUrl, entry);
 }
 
 export async function startByCode(originCode, filename, metaUrl) {
@@ -20,15 +22,17 @@ export async function startByCode(originCode, filename, metaUrl) {
   const compiler = new Compiler({ filename, code: originCode });
   const { imports, exports, generateCode } = compiler.transform();
   await Promise.all(
-    imports.map(({ moduleId }) => compileAndFetchCode(moduleId, metaUrl)),
+    imports.map(({ moduleId }) => {
+      const requestUrl = transformUrl(metaUrl, moduleId);
+      return compileAndFetchCode(requestUrl, requestUrl);
+    }),
   );
   const output = generateCode();
-  output.url = metaUrl;
+  output.storeId = metaUrl;
+  output.realUrl = metaUrl;
   output.exports = exports;
   output.map = await toBase64(output.map.toString());
-  const { code, map } = output;
-  const module = {};
-  return () => execCode(metaUrl, module, code, map);
+  return () => execCode(output, {});
 }
 
 export async function startByScriptTags(typeFlag) {

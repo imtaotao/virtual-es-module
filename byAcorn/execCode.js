@@ -5,7 +5,7 @@ const namespaceStore = new WeakMap();
 export const moduleStore = {};
 export const moduleResource = {};
 
-function transformUrl(resolvePath, curPath) {
+export function transformUrl(resolvePath, curPath) {
   const baseUrl = new URL(resolvePath, location.href);
   const realPath = new URL(curPath, baseUrl.href);
   return realPath.href;
@@ -22,22 +22,20 @@ export function toBase64(input) {
   });
 }
 
-export function importModule(moduleId, baseUrl) {
-  const url = baseUrl ? transformUrl(baseUrl, moduleId) : moduleId;
-  if (!moduleStore[url]) {
-    console.log(url);
-    if (!moduleResource[url]) {
+export function importModule(storeId, moduleId) {
+  if (!moduleStore[storeId]) {
+    if (!moduleResource[storeId]) {
       throw new Error(`Module '${moduleId}' not found`);
     }
-    const { code, map, url } = moduleResource[url];
-    const module = (moduleStore[url] = {});
-    execCode(url, module, code, map);
+    const output = moduleResource[storeId];
+    const module = (moduleStore[storeId] = {});
+    execCode(output, module);
   }
-  return moduleStore[url];
+  return moduleStore[storeId];
 }
 
-export function execCode(url, module, code, map) {
-  const sourcemap = `\n//@ sourceMappingURL=${map}`;
+export function execCode(output, module) {
+  const sourcemap = `\n//@ sourceMappingURL=${output.map}`;
   const exportModule = (exportObject) => {
     Object.keys(exportObject).forEach((key) => {
       Object.defineProperty(module, key, {
@@ -59,31 +57,35 @@ export function execCode(url, module, code, map) {
     return wrapperModule;
   };
 
-  (0, eval)(`${code}\n//${url}${sourcemap}`);
+  (0, eval)(`${output.code}\n//${output.storeId}${sourcemap}`);
   const actuator = globalThis[Compiler.keys.__VIRTUAL_WRAPPER__];
 
   actuator(
-    (moduleId) => importModule(moduleId, url),
+    (moduleId) => {
+      const storeId = transformUrl(output.storeId, moduleId);
+      return importModule(storeId, moduleId);
+    },
     exportModule,
     getModuleNamespace,
-    createImportMeta(url),
+    createImportMeta(output.realUrl),
     async (moduleId) => {
-      if (!moduleStore[moduleId]) {
-        await compileAndFetchCode(moduleId, url);
-        const { code, map, url } = moduleResource[moduleId];
-        const module = (moduleStore[id] = {});
-        execCode(url, module, code, map);
+      const storeId = transformUrl(output.storeId, moduleId);
+      if (!moduleStore[storeId]) {
+        const requestUrl = transformUrl(output.realUrl, moduleId);
+        await compileAndFetchCode(storeId, requestUrl);
+        const curOutput = moduleResource[storeId];
+        const module = (moduleStore[url] = {});
+        execCode(curOutput, module);
       }
-      return getModuleNamespace(moduleStore[moduleId]);
+      return getModuleNamespace(moduleStore[storeId]);
     },
   );
 }
 
-export function compileAndFetchCode(moduleId, baseUrl) {
-  if (moduleResource[moduleId]) {
-    return moduleResource[moduleId];
+export function compileAndFetchCode(storeId, url) {
+  if (moduleResource[storeId]) {
+    return moduleResource[storeId];
   }
-  const url = baseUrl ? transformUrl(baseUrl, moduleId) : moduleId;
   const p = fetch(url)
     .then(async (res) => {
       const code = res.status >= 400 ? '' : await res.text();
@@ -91,25 +93,28 @@ export function compileAndFetchCode(moduleId, baseUrl) {
     })
     .then(async ([code, realUrl]) => {
       if (code) {
-        const compiler = new Compiler({ code, filename: moduleId });
+        const compiler = new Compiler({ code, filename: storeId });
         const { imports, exports, generateCode } = compiler.transform();
         await Promise.all(
           imports.map(({ moduleId }) => {
-            return moduleResource[moduleId]
+            const curStoreId = transformUrl(storeId, moduleId);
+            const requestUrl = transformUrl(realUrl, moduleId);
+            return moduleResource[curStoreId]
               ? null
-              : compileAndFetchCode(moduleId, url);
+              : compileAndFetchCode(curStoreId, requestUrl);
           }),
         );
+
         const output = generateCode();
-        output.url = realUrl;
-        // output.realUrl = realUrl;
+        output.storeId = storeId;
+        output.realUrl = realUrl;
         output.exports = exports;
         output.map = await toBase64(output.map.toString());
-        moduleResource[moduleId] = output;
+        moduleResource[storeId] = output;
       } else {
-        moduleResource[moduleId] = null;
+        moduleResource[storeId] = null;
       }
     });
-  moduleResource[moduleId] = p;
+  moduleResource[storeId] = p;
   return p;
 }
