@@ -1,17 +1,11 @@
+import { runtime } from './runtime';
 import { Compiler } from './compiler/index';
-import {
-  toBase64,
-  execCode,
-  transformUrl,
-  importModule,
-  compileAndFetchCode,
-} from './execCode';
 
 export async function startByUrl(entry) {
   if (!entry) throw new Error('Missing entry');
-  const requestUrl = transformUrl(location.href, entry);
-  await compileAndFetchCode(requestUrl, requestUrl);
-  return () => importModule(requestUrl, entry);
+  const requestUrl = runtime.transformUrl(location.href, entry);
+  await runtime.compileAndFetchCode(requestUrl, requestUrl);
+  return () => runtime.importModule(requestUrl, entry);
 }
 
 export async function startByCode(originCode, filename, metaUrl) {
@@ -23,16 +17,16 @@ export async function startByCode(originCode, filename, metaUrl) {
   const { imports, exports, generateCode } = compiler.transform();
   await Promise.all(
     imports.map(({ moduleId }) => {
-      const requestUrl = transformUrl(metaUrl, moduleId);
-      return compileAndFetchCode(requestUrl, requestUrl);
+      const requestUrl = runtime.transformUrl(metaUrl, moduleId);
+      return runtime.compileAndFetchCode(requestUrl, requestUrl);
     }),
   );
   const output = generateCode();
   output.storeId = metaUrl;
   output.realUrl = metaUrl;
   output.exports = exports;
-  output.map = await toBase64(output.map.toString());
-  return () => execCode(output, {});
+  output.map = await runtime.toBase64(output.map.toString());
+  return () => runtime.execCode(output, {});
 }
 
 export async function startByScriptTags(typeFlag) {
