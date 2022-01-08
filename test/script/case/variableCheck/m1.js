@@ -21,6 +21,9 @@ const { e, f, g = name, ...rest } = { e: 10, f: 20, c: name, d: 40 };
 expect(g === rest.c).toBe(true);
 expect(rest.c === name).toBe(true);
 
+expect(`chentao.${name[0]}`).toBe('chentao.m2');
+expect(`chentao.${m2.name[0]}`).toBe('chentao.m2');
+
 function fn1() {
   expect(name).toEqual(['m2']);
 
