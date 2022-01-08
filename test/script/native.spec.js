@@ -20,6 +20,10 @@ describe('Native import', () => {
     await import('./case/importMeta/m1.js');
   });
 
+  it('dynamic import', async () => {
+    await import('./case/dynamicImport/m1.js');
+  });
+
   it('variable check', async () => {
     await import('./case/variableCheck/m1.js');
   });

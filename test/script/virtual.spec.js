@@ -32,6 +32,10 @@ describe('Virtual import', () => {
     await startByUrl('./case/variableCheck/m1.js');
   });
 
+  it('dynamic import', async () => {
+    await startByUrl('./case/dynamicImport/m1.js');
+  });
+
   it('execution order check', async () => {
     await startByUrl('./case/executionOrder/m1.js');
   });
