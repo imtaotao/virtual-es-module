@@ -1,3 +1,4 @@
+// 运行时通过 js 来分析，比原生 esModule 的慢 8 倍左右
 import { runtime } from './runtime';
 import { Compiler } from './compiler/index';
 
