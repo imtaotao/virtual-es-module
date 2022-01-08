@@ -8,6 +8,7 @@ const startByUrl = async (entry) => {
 
 describe('Virtual import', () => {
   beforeEach(function () {
+    globalThis.orderIndex = 0;
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
   });
 
@@ -29,6 +30,10 @@ describe('Virtual import', () => {
 
   it('variable check', async () => {
     await startByUrl('./case/variableCheck/m1.js');
+  });
+
+  it('execution order check', async () => {
+    await startByUrl('./case/executionOrder/m1.js');
   });
 
   it('resource redirect', async () => {
@@ -58,7 +63,7 @@ describe('Virtual import', () => {
   it('strict mode check', async () => {
     let isError = false;
     try {
-      await import('./case/strictModeCheck/m1.js');
+      await startByUrl('./case/strictModeCheck/m1.js');
     } catch {
       isError = true;
     }

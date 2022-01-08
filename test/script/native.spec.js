@@ -1,5 +1,6 @@
 describe('Native import', () => {
   beforeEach(function () {
+    globalThis.orderIndex = 0;
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
   });
 
@@ -21,6 +22,10 @@ describe('Native import', () => {
 
   it('variable check', async () => {
     await import('./case/variableCheck/m1.js');
+  });
+
+  it('execution order check', async () => {
+    await import('./case/executionOrder/m1.js');
   });
 
   it('resource redirect', async () => {
