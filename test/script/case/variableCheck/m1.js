@@ -17,6 +17,10 @@ const d = {
 expect(d[name[0]]).toBe(1);
 expect(Object.keys(d)[0]).toEqual('m2');
 
+const { e, f, g = name, ...rest } = { e: 10, f: 20, c: name, d: 40 };
+expect(g === rest.c).toBe(true);
+expect(rest.c === name).toBe(true);
+
 function fn1() {
   expect(name).toEqual(['m2']);
 
@@ -80,6 +84,28 @@ function fn3() {
   return r;
 }
 expect(fn3).toThrow();
+
+function fn4() {
+  const { a: m2 = name } = {};
+  expect(m2 === name).toBe(true);
+  (() => {
+    const {
+      a: {
+        b: {
+          c: [name],
+        },
+      },
+    } = {
+      a: {
+        b: {
+          c: [1],
+        },
+      },
+    };
+    expect(name).toBe(1);
+  })();
+}
+fn4();
 
 try {
   throw 1;
