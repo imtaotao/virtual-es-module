@@ -7,6 +7,10 @@ const startByUrl = async (entry) => {
 };
 
 describe('Virtual import', () => {
+  beforeEach(function () {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+  });
+
   it('export declaration', async () => {
     await startByUrl('./case/exportDeclaration/m1.js');
   });
@@ -41,5 +45,9 @@ describe('Virtual import', () => {
       isError = true;
     }
     expect(isError).toBe(true);
+  });
+
+  it('resource redirect', async () => {
+    await startByUrl('./case/resourceRedirect/m1.js');
   });
 });

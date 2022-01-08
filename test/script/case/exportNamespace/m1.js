@@ -11,6 +11,9 @@ expect(() => {
 // 模块对象的原型为 null
 expect(Object.getPrototypeOf(m2)).toBe(null);
 
+expect(m2.toString).toBeUndefined();
+expect(m2[Symbol.toStringTag]).toBe('Module');
+
 expect(d).toBe(1);
 expect(m2Default).toEqual([3]);
 

@@ -7,27 +7,15 @@
   <title>Create by imtaotao</title>
 </head>
 <body>
-  <script>
+  <!-- <script>
     // 给 babel 环境准备的
     globalThis.process = {};
     globalThis.Buffer = { isBuffer: () => false };
-  </script>
+  </script> -->
   <script src="/dist/virtual-esm.umd.js"></script>
-
   <!-- virtual -->
-  <!-- <script type="virtual-module">
-    import * as _ from 'https://unpkg.com/lodash-es';
-    console.log(_, 'lodash');
-  </script> -->
   <script type="virtual-module">
-    import * as m from './files/m4.js';
-    console.log('-------');
-    console.log(Object.keys(m));
-    console.log(m);
-    console.log('-------');
+    import * as t from './files/m1.js';
   </script>
-  <!-- <script type="virtual-module">
-    import * as t from './files/m7.js';
-  </script> -->
 </body>
 </html>

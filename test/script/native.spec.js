@@ -1,4 +1,8 @@
 describe('Native import', () => {
+  beforeEach(function () {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+  });
+
   it('export declaration', async () => {
     await import('./case/exportDeclaration/m1.js');
   });
@@ -33,5 +37,9 @@ describe('Native import', () => {
       isError = true;
     }
     expect(isError).toBe(true);
+  });
+
+  it('resource redirect', async () => {
+    await import('./case/resourceRedirect/m1.js');
   });
 });

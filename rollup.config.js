@@ -50,7 +50,7 @@ function createConfig(format, output) {
   const isUmdBuild = /umd/.test(format);
   const isBundlerESMBuild = /esm-bundler/.test(format);
   const isProductionBuild = /\.prod\.js$/.test(output.file);
-  const input = path.resolve(__dirname, `${byBabel ? 'byBabel' : 'byAcorn'}/index.js`);
+  const input = path.resolve(__dirname, `${byBabel ? 'byBabel' : 'src'}/index.js`);
 
   output.externalLiveBindings = false;
   if (isUmdBuild) output.name = 'VirtualModule';
