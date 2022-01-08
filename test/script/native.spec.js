@@ -10,4 +10,8 @@ describe('Native import', () => {
   it('export namespace', async () => {
     await import('./case/exportNamespace/m5.js');
   });
+
+  it('import meta', async () => {
+    await import('./case/importMeta/m9.js');
+  });
 });

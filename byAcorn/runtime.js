@@ -25,18 +25,6 @@ export const runtime = {
     return realPath.href;
   },
 
-  importModule(storeId, moduleId) {
-    if (!this.store.modules[storeId]) {
-      const output = this.store.resources[storeId];
-      if (!output) {
-        throw new Error(`Module '${moduleId}' not found`);
-      }
-      const module = (this.store.modules[storeId] = {});
-      this.execCode(output, module);
-    }
-    return this.store.modules[storeId];
-  },
-
   exportModule(module, exportObject) {
     Object.keys(exportObject).forEach((key) => {
       Object.defineProperty(module, key, {
@@ -49,11 +37,23 @@ export const runtime = {
     });
   },
 
+  importModule(storeId, moduleId) {
+    if (!this.store.modules[storeId]) {
+      const output = this.store.resources[storeId];
+      if (!output) {
+        throw new Error(`Module '${moduleId}' not found`);
+      }
+      const module = (this.store.modules[storeId] = {});
+      this.execCode(output, module);
+    }
+    return this.store.modules[storeId];
+  },
+
   async dynamicImportModule(parentOutput, moduleId) {
     const storeId = this.transformUrl(parentOutput.storeId, moduleId);
     if (!this.store.modules[storeId]) {
       const requestUrl = this.transformUrl(parentOutput.realUrl, moduleId);
-      await compileAndFetchCode(storeId, requestUrl);
+      await this.compileAndFetchCode(storeId, requestUrl);
       const currentOutput = this.store.resources[storeId];
       const module = (this.store.modules[storeId] = {});
       this.execCode(currentOutput, module);

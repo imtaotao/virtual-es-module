@@ -1,4 +1,6 @@
 const startByUrl = async (entry) => {
+  const base = new URL('./base/script/', location.href).href;
+  entry = new URL(entry, base).href;
   const execCode = await VirtualModule.startByUrl(entry);
   await execCode();
   return new Promise(setTimeout);
@@ -15,5 +17,9 @@ describe('Virtual import', () => {
 
   it('export namespace', async () => {
     await startByUrl('./case/exportNamespace/m5.js');
+  });
+
+  it('import meta', async () => {
+    await startByUrl('./case/importMeta/m9.js');
   });
 });

@@ -21,9 +21,6 @@ module.exports = (config) => {
     preprocessors: {
       'script/*.spec.js': ['sourcemap'],
     },
-    proxies: {
-      '/case': '/base/script/case',
-    },
     plugins: [
       'karma-jasmine',
       'karma-mocha-reporter',
