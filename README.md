@@ -1,5 +1,5 @@
 <div align="center">
-Virtual es module
+<h2>Virtual es module</h2>
 
 [![NPM version](https://img.shields.io/npm/v/virtual-es-module.svg?style=flat-square)](https://www.npmjs.com/package/virtual-es-module)
 
