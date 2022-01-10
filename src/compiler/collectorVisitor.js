@@ -73,7 +73,12 @@ export const collectorVisitor = {
     } else if (isVar(left)) {
       const parentScope =
         state.getFunctionParent(scope) || state.getProgramParent(scope);
-      parentScope.registerBinding('var', left.name, left);
+      for (const decl of left.declarations) {
+        const ids = state.getBindingIdentifiers(decl.id);
+        for (const { name } of ids) {
+          parentScope.registerBinding('var', name, decl);
+        }
+      }
     }
   },
 
