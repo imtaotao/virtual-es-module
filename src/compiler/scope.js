@@ -23,9 +23,8 @@ import { getBindingIdentifiers } from './state';
 //  | "local" /* function expression id, class expression id */
 //  | "unknown"; /* export specifiers */
 export class Scope {
-  constructor(node, parent, state) {
+  constructor(node, parent) {
     this.node = node;
-    this.state = state;
     this.parent = parent;
     this.labels = new Map();
     this.globals = Object.create(null);

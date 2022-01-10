@@ -43,7 +43,7 @@ function walk(node, visitors, state) {
       const parentNode = ancestors[ancestors.length - 2];
       let scope = state.scopes.get(parentNode);
       if (isProgram(node) || isScope(node, parentNode)) {
-        scope = new Scope(node, scope, state);
+        scope = new Scope(node, scope);
       }
       state.scopes.set(node, scope);
     }
