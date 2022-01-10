@@ -97,27 +97,28 @@ export const collectorVisitor = {
   },
 
   ExportDeclaration(node, state) {
-    if (isExportAllDeclaration(node)) return;
-    const { declarations } = node;
-    const scope = state.scopes.get(node);
-    if (
-      isClassDeclaration(declarations) ||
-      isFunctionDeclaration(declarations)
-    ) {
-      const { id } = declarations;
-      if (!id) return;
-      const ids = state.getBindingIdentifiers(id);
-      state.defer.references.add(() => {
-        return { ids, type: 'export' };
-      });
-    } else if (isVariableDeclaration(declarations)) {
-      for (const decl of declarations) {
-        state.defer.references.add(() => {
-          const ids = state.getBindingIdentifiers(decl.id);
-          return { scope, ids, type: 'export' };
-        });
-      }
-    }
+     // ExportAllDeclaration does not have `declaration`
+     if (isExportAllDeclaration(node)) return;
+     const { declaration } = node;
+     const scope = state.scopes.get(node);
+     if (
+       isClassDeclaration(declaration) ||
+       isFunctionDeclaration(declaration)
+     ) {
+       const { id } = declaration;
+       if (!id) return;
+       const ids = state.getBindingIdentifiers(id);
+       state.defer.references.add(() => {
+         return { ids, scope, type: 'export' };
+       });
+     } else if (isVariableDeclaration(declaration)) {
+       for (const decl of declaration.declarations) {
+         state.defer.references.add(() => {
+           const ids = state.getBindingIdentifiers(decl.id);
+           return { ids, scope, type: 'export' };
+         });
+       }
+     }
   },
 
   LabeledStatement(node, state) {
