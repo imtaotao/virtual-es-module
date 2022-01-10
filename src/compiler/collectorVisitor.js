@@ -171,7 +171,7 @@ export const collectorVisitor = {
     // collides with a function param, the id effectively can't be
     // referenced: here we registered it as a constantViolation
     if (isFunctionExpression(node) && node.id) {
-      scope.registerBinding('local', id.name, node);
+      scope.registerBinding('local', node.id.name, node);
     }
   },
 

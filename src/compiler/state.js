@@ -30,7 +30,6 @@ const virtualTypesKeys = Object.keys(virtualTypes);
 
 function walk(node, visitors, state) {
   const ancestors = [];
-  const baseVisitor = base;
   const call = (node, st, override) => {
     const type = override || node.type;
     const found = visitors[type];
@@ -48,7 +47,7 @@ function walk(node, visitors, state) {
       state.scopes.set(node, scope);
     }
     // 递归调用
-    baseVisitor[type](node, st, call);
+    base[type](node, st, call);
     if (found) found(node, st || ancestors, ancestors);
     if (isCurrentNode && virtualFnKeys.length > 0) {
       for (const key of virtualFnKeys) {
@@ -113,7 +112,10 @@ function execDeferQueue(state) {
   });
   state.defer.constantViolations.forEach((fn) => {
     const { node, scope } = fn();
-    scope.registerConstantViolation(node.name, node);
+    const ids = getBindingIdentifiers(node);
+    for (const id of ids) {
+      scope.registerConstantViolation(id.name, node);
+    }
   });
 }
 

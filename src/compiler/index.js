@@ -144,8 +144,8 @@ export class Compiler {
   generateIdentifierTransformNode(nameOrInfo) {
     let info;
     if (typeof nameOrInfo === 'string') {
-      for (const { data, isExport } of this.importInfos) {
-        if (!isExport) {
+      for (const { data } of this.importInfos) {
+        if (!data.isExport) {
           const res = this.findIndexInData(nameOrInfo, data);
           if (res) {
             info = res;
@@ -220,9 +220,9 @@ export class Compiler {
   }
 
   findImportInfo(moduleId) {
-    for (const info of this.importInfos) {
-      if (info.data.moduleId === moduleId) {
-        return [info.data.moduleName, info.transformNode];
+    for (const { data, transformNode } of this.importInfos) {
+      if (data.moduleId === moduleId) {
+        return [data.moduleName, transformNode];
       }
     }
     return [];
