@@ -1,15 +1,15 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "es module polyfill",
-  "types": "index.d.ts",
   "main": "index.js",
+  "types": "dist/src/index.d.ts",
   "module": "dist/virtual-esm.esm-bundler.js",
   "scripts": {
     "build": "rollup --config",
     "test": "karma start test/karma.config.js",
     "dev": "rollup --config -w | http-server ./",
-    "format": "prettier --write --parser typescript \"(byAcorn|byBabel|test)/**/*.(js|ts?(x))\""
+    "format": "prettier --write --parser typescript \"(src|test|byBabel)/**/*.(js|ts?(x))\""
   },
   "license": "MIT",
   "author": "imtaotao",

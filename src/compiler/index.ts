@@ -154,7 +154,9 @@ export class Compiler {
 
   private getChildModuleExports(moduleId: string) {
     const storeId = transformUrl(this.options.storeId, moduleId);
-    const output = this.options.runtime.resources[storeId] as ModuleResource;
+    const output = (this.options.runtime as any).resources[
+      storeId
+    ] as ModuleResource;
     return output ? output.exports : null;
   }
 

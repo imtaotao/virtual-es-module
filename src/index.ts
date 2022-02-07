@@ -7,17 +7,17 @@ if (typeof document !== 'undefined') {
     const runtime = new Runtime();
     return runtime.importByUrl(entry);
   }
-  
+
   function startByCode(originCode, filename, metaUrl) {
     const runtime = new Runtime();
     return runtime.importByCode(originCode, filename, metaUrl);
   }
-  
+
   async function startByScriptTags(typeFlag) {
     if (!typeFlag) throw new Error('Missing typeFlag');
     const execQueue = [];
     const nodes = document.getElementsByTagName('script');
-  
+
     const getFilename = (i) => {
       const url = new URL(location.href);
       const parts = url.pathname.split('/');
@@ -33,7 +33,7 @@ if (typeof document !== 'undefined') {
       url.pathname = parts.join('/');
       return url.toString();
     };
-  
+
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const type = node.getAttribute('type');
@@ -46,7 +46,7 @@ if (typeof document !== 'undefined') {
         execQueue.push(exec);
       }
     }
-    
+
     for (const exec of execQueue) {
       await exec();
     }

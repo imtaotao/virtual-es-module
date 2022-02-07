@@ -16,10 +16,10 @@ export interface RuntimeOptions {
 }
 
 export class Runtime {
+  private options: RuntimeOptions;
   private modules = new WeakMap<MemoryModule, Module>();
   private memoryModules: Record<string, MemoryModule> = {};
-  public options: RuntimeOptions;
-  public resources: Record<string, ModuleResource | Promise<void>> = {};
+  private resources: Record<string, ModuleResource | Promise<void>> = {};
 
   constructor(options?: RuntimeOptions) {
     this.options = options || {};
@@ -142,7 +142,7 @@ export class Runtime {
     if (!url) url = storeId;
 
     const p = fetch(url)
-      .then(async res => {
+      .then(async (res) => {
         const code = res.status >= 400 ? '' : await res.text();
         return [code, res.url]; // 可能重定向了
       })
@@ -158,7 +158,7 @@ export class Runtime {
     return p;
   }
 
-  import(storeId: string) {
+  private import(storeId: string) {
     return this.importModule(storeId) as MemoryModule;
   }
 

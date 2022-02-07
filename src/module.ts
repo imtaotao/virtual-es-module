@@ -36,7 +36,7 @@ export function createModule(memoryModule: MemoryModule) {
 }
 
 export function createImportMeta(url: string) {
-  const metaObject: { url: string; __virtual: boolean } = Object.create(null);
+  const metaObject: { url: string; __polyfill: boolean } = Object.create(null);
   const set = (key, value) => {
     Object.defineProperty(metaObject, key, {
       value,
@@ -47,6 +47,6 @@ export function createImportMeta(url: string) {
   };
 
   set('url', url);
-  set('__virtual', true);
+  set('__polyfill', true);
   return { meta: metaObject };
 }

@@ -72,7 +72,7 @@ export async function mergeSourcemap(compiler: Compiler, output: Output) {
     } else {
       const { filename } = compiler.options;
       const requestUrl = transformUrl(filename, mapInfo);
-      const code = await fetch(requestUrl).then(res => res.text())
+      const code = await fetch(requestUrl).then((res) => res.text());
       oldMap = JSON.parse(code);
     }
 
