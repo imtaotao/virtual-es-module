@@ -1,5 +1,4 @@
-// The implementation of babel is mainly used to verify some behaviors,
-// assist and ensure the correctness of the implementation of acorn.
+// babel 的一套实现是为了验证 acorn 实现上的一些 bug
 
 import { transform } from './compiler';
 import { execCode, importModule, compileAndFetchCode } from './execCode';

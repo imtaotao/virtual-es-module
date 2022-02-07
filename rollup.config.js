@@ -81,9 +81,9 @@ function createConfig(format, output) {
         namedExports: false,
       }),
       typescript({
+        clean: true, // no cache
         typescript: require('typescript'),
         tsconfig: path.resolve(__dirname, './tsconfig.json'),
-        clean: true, // no cache
       }),
       createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild),
       ...nodePlugins,
