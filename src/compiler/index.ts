@@ -66,13 +66,13 @@ export interface Output {
 
 export class Compiler {
   static keys = {
-    __GARFISH_IMPORT__: '__GARFISH_IMPORT__',
-    __GARFISH_EXPORT__: '__GARFISH_EXPORT__',
-    __GARFISH_DEFAULT__: '__GARFISH_DEFAULT__',
-    __GARFISH_WRAPPER__: '__GARFISH_WRAPPER__',
-    __GARFISH_NAMESPACE__: '__GARFISH_NAMESPACE__',
-    __GARFISH_IMPORT_META__: '__GARFISH_IMPORT_META__',
-    __GARFISH_DYNAMIC_IMPORT__: '__GARFISH_DYNAMIC_IMPORT__',
+    __VIRTUAL_IMPORT__: '__VIRTUAL_IMPORT__',
+    __VIRTUAL_EXPORT__: '__VIRTUAL_EXPORT__',
+    __VIRTUAL_DEFAULT__: '__VIRTUAL_DEFAULT__',
+    __VIRTUAL_WRAPPER__: '__VIRTUAL_WRAPPER__',
+    __VIRTUAL_NAMESPACE__: '__VIRTUAL_NAMESPACE__',
+    __VIRTUAL_IMPORT_META__: '__VIRTUAL_IMPORT_META__',
+    __VIRTUAL_DYNAMIC_IMPORT__: '__VIRTUAL_DYNAMIC_IMPORT__',
   };
 
   private ast: Program;
@@ -206,7 +206,7 @@ export class Compiler {
   private generateImportTransformNode(moduleName: string, moduleId: string) {
     const varName = identifier(moduleName);
     const varExpr = callExpression(
-      identifier(Compiler.keys.__GARFISH_IMPORT__),
+      identifier(Compiler.keys.__VIRTUAL_IMPORT__),
       [literal(moduleId)],
     );
     const varNode = variableDeclarator(varName, varExpr);
@@ -235,7 +235,7 @@ export class Compiler {
       const { i, data } = info;
       const item = data.imports[i];
       if (item.isNamespace) {
-        return callExpression(identifier(Compiler.keys.__GARFISH_NAMESPACE__), [
+        return callExpression(identifier(Compiler.keys.__VIRTUAL_NAMESPACE__), [
           identifier(data.moduleName),
         ]);
       } else {
@@ -256,7 +256,7 @@ export class Compiler {
       );
     });
     const exportCallExpression = callExpression(
-      identifier(Compiler.keys.__GARFISH_EXPORT__),
+      identifier(Compiler.keys.__VIRTUAL_EXPORT__),
       [objectExpression(exportNodes)],
     );
     this.ast.body.unshift(
@@ -357,7 +357,7 @@ export class Compiler {
       let name, refNode;
       if (isDefault) {
         name = 'default';
-        refNode = identifier(Compiler.keys.__GARFISH_DEFAULT__);
+        refNode = identifier(Compiler.keys.__VIRTUAL_DEFAULT__);
       } else {
         name = isIdentifier(node) ? node.name : node.id.name;
         refNode = identifier(name);
@@ -368,7 +368,7 @@ export class Compiler {
     if (isDefault) {
       this.deferQueue.replaces.add(() => {
         // 此时 declaration 可能已经被替换过了
-        const varName = identifier(Compiler.keys.__GARFISH_DEFAULT__);
+        const varName = identifier(Compiler.keys.__VIRTUAL_DEFAULT__);
         const varNode = variableDeclarator(
           varName,
           node.declaration as Expression,
@@ -413,7 +413,7 @@ export class Compiler {
           let refNode;
           if (name === namespace) {
             refNode = callExpression(
-              identifier(Compiler.keys.__GARFISH_NAMESPACE__),
+              identifier(Compiler.keys.__VIRTUAL_NAMESPACE__),
               [identifier(moduleName)],
             );
           } else {
@@ -496,7 +496,7 @@ export class Compiler {
     ancestors: Array<Node>,
   ) {
     const replacement = callExpression(
-      identifier(Compiler.keys.__GARFISH_DYNAMIC_IMPORT__),
+      identifier(Compiler.keys.__VIRTUAL_DYNAMIC_IMPORT__),
       [node.source],
     );
     state.replaceWith(replacement, ancestors);
@@ -510,7 +510,7 @@ export class Compiler {
   ) {
     if (node.meta.name === 'import') {
       const replacement = memberExpression(
-        identifier(Compiler.keys.__GARFISH_IMPORT_META__),
+        identifier(Compiler.keys.__VIRTUAL_IMPORT_META__),
         node.property,
       );
       state.replaceWith(replacement, ancestors);

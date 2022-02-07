@@ -70,24 +70,24 @@ export class Runtime {
 
   private generateProvider(output: ModuleResource, memoryModule: MemoryModule) {
     return {
-      [Compiler.keys.__GARFISH_IMPORT_META__]: createImportMeta(output.realUrl),
+      [Compiler.keys.__VIRTUAL_IMPORT_META__]: createImportMeta(output.realUrl),
 
-      [Compiler.keys.__GARFISH_NAMESPACE__]: (memoryModule: MemoryModule) => {
+      [Compiler.keys.__VIRTUAL_NAMESPACE__]: (memoryModule: MemoryModule) => {
         return this.getModule(memoryModule);
       },
 
-      [Compiler.keys.__GARFISH_IMPORT__]: (moduleId: string) => {
+      [Compiler.keys.__VIRTUAL_IMPORT__]: (moduleId: string) => {
         const storeId = transformUrl(output.storeId, moduleId);
         return this.import(storeId);
       },
 
-      [Compiler.keys.__GARFISH_DYNAMIC_IMPORT__]: (moduleId: string) => {
+      [Compiler.keys.__VIRTUAL_DYNAMIC_IMPORT__]: (moduleId: string) => {
         const storeId = transformUrl(output.storeId, moduleId);
         const requestUrl = transformUrl(output.realUrl, moduleId);
         return this.importByUrl(storeId, requestUrl);
       },
 
-      [Compiler.keys.__GARFISH_EXPORT__]: (
+      [Compiler.keys.__VIRTUAL_EXPORT__]: (
         exportObject: Record<string, () => any>,
       ) => {
         Object.keys(exportObject).forEach((key) => {
