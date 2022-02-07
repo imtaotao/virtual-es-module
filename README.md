@@ -7,13 +7,6 @@
 
 Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 
-## Feature
-
-- [x] `import`
-- [x] `export`
-- [x] `import()`
-- [x] `import.meta`
-- [x] `Circular reference`
 
 ## Demo
 
@@ -44,11 +37,12 @@ Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 import { Runtime } from 'virtual-es-module';
 
 const runtime = new Runtime();
-// Start by url
+
+// Import by url
 const module = await runtime.importByUrl('./a.mjs');
 console.log(module);
 
-// Start by code
+// Import by code
 const module = await runtime.importByCode(`
   import * as m from './a.mjs';
   export default 1;
@@ -63,6 +57,5 @@ The code executed by eval cannot be converted by this scheme.
 
 ```js
 import m from './m.js';
-
 eval('console.log(m);') // throw error 'm is not defined'
-``
+```
