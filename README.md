@@ -33,8 +33,9 @@ Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 
 ## API
 
+### Import by url
+
 ```js
-// Import by url
 import { Runtime } from 'virtual-es-module';
 const runtime = new Runtime();
 
@@ -42,8 +43,9 @@ const module = await runtime.importByUrl('./a.mjs');
 console.log(module);
 ```
 
+### Import by code
+
 ```js
-// Import by code
 import { Runtime } from 'virtual-es-module';
 const runtime = new Runtime();
 
