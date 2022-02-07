@@ -25,6 +25,13 @@ export { a as aa, fn3 as _fn3 };
 
 export default ['default'];
 
+const obj = {
+  name1: 'n1',
+  name2: 'n2',
+};
+
+export const { name1, name2: bar } = obj;
+
 setTimeout(() => {
   a = 'aa';
 });

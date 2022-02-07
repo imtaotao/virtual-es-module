@@ -9,6 +9,8 @@ import dd, {
   fn2,
   _fn3,
   cls,
+  name1,
+  bar,
   default as dd2,
 } from './m2.js';
 
@@ -25,6 +27,8 @@ expect(fn1()).toBe('fn1');
 expect(fn2()).toBe('fn2');
 expect(_fn3()).toBe('fn3');
 expect(new cls().world()).toBe('cls.world');
+expect(name1).toBe('n1');
+expect(bar).toBe('n2');
 
 setTimeout(() => {
   expect(a).toBe('aa');
