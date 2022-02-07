@@ -3,6 +3,7 @@ import json from '@rollup/plugin-json';
 import cleanup from 'rollup-plugin-cleanup';
 import replace from '@rollup/plugin-replace';
 import commonjs from '@rollup/plugin-commonjs';
+import typescript from 'rollup-plugin-typescript2';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 const byBabel = false;
@@ -50,7 +51,9 @@ function createConfig(format, output) {
   const isUmdBuild = /umd/.test(format);
   const isBundlerESMBuild = /esm-bundler/.test(format);
   const isProductionBuild = /\.prod\.js$/.test(output.file);
-  const input = path.resolve(__dirname, `${byBabel ? 'byBabel' : 'src'}/index.js`);
+  const input = byBabel
+    ? path.resolve(__dirname, 'byBabel/index.js')
+    : path.resolve(__dirname, `src/index.ts`);
 
   output.externalLiveBindings = false;
   if (isUmdBuild) output.name = 'VirtualModule';
@@ -76,6 +79,11 @@ function createConfig(format, output) {
       cleanup(),
       json({
         namedExports: false,
+      }),
+      typescript({
+        typescript: require('typescript'),
+        tsconfig: path.resolve(__dirname, './tsconfig.json'),
+        clean: true, // no cache
       }),
       createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild),
       ...nodePlugins,

@@ -1,4 +1,5 @@
 // Inspired by `@babel/traverse`
+import type { Node, Identifier, Expression } from 'estree';
 import { base } from 'acorn-walk';
 import { Scope } from './scope';
 import { collectorVisitor } from './collectorVisitor';
@@ -20,47 +21,43 @@ import {
   isExportDeclaration,
 } from './types';
 
+export type State = ReturnType<typeof createState>;
+
+type Assignments = Set<
+  () => {
+    scope: Scope;
+    ids: Array<Identifier>;
+  }
+>;
+
+type ConstantViolations = Set<
+  () => {
+    scope: Scope;
+    node: Expression;
+  }
+>;
+
+type References = Set<
+  () => {
+    scope: Scope;
+    ids: Array<Identifier>;
+    type: 'identifier' | 'export';
+  }
+>;
+
 const virtualTypes = {
   Declaration: isDeclaration,
   BlockScoped: isBlockScoped,
   ForXStatement: isForXStatement,
   ExportDeclaration: isExportDeclaration,
 };
+
 const virtualTypesKeys = Object.keys(virtualTypes);
 
-function walk(node, visitors, state) {
-  const ancestors = [];
-  const call = (node, st, override) => {
-    const type = override || node.type;
-    const found = visitors[type];
-    const isNew = node !== ancestors[ancestors.length - 1];
-    const isCurrentNode = type === node.type;
-    const virtualFnKeys = virtualTypesKeys.filter((k) => virtualTypes[k](node));
-    if (isNew) ancestors.push(node);
-    if (isCurrentNode) {
-      state.ancestors.set(node, [...ancestors]);
-      const parentNode = ancestors[ancestors.length - 2];
-      let scope = state.scopes.get(parentNode);
-      if (isProgram(node) || isScope(node, parentNode)) {
-        scope = new Scope(node, scope);
-      }
-      state.scopes.set(node, scope);
-    }
-    // 递归调用
-    base[type](node, st, call);
-    if (found) found(node, st || ancestors, ancestors);
-    if (isCurrentNode && virtualFnKeys.length > 0) {
-      for (const key of virtualFnKeys) {
-        const fn = visitors[key];
-        if (fn) fn(node, st || ancestors, ancestors);
-      }
-    }
-    if (isNew) ancestors.pop();
-  };
-  call(node, state);
-}
-
-function getParentScope(scope, condition) {
+function getParentScope(
+  scope: Scope,
+  condition: (node: Node) => boolean,
+): Scope | null {
   do {
     if (condition(scope.node)) {
       return scope;
@@ -69,26 +66,7 @@ function getParentScope(scope, condition) {
   return null;
 }
 
-export function getBindingIdentifiers(node) {
-  const f = (node) => {
-    if (isIdentifier(node)) {
-      return [node];
-    } else if (isArrayPattern(node)) {
-      return node.elements.map((el) => f(el)).flat();
-    } else if (isObjectPattern(node)) {
-      return node.properties.map((p) => f(p.value)).flat();
-    } else if (isAssignmentPattern(node)) {
-      return f(node.left);
-    } else if (isRestElement(node)) {
-      return f(node.argument);
-    } else {
-      return [];
-    }
-  };
-  return f(node);
-}
-
-function execDeferQueue(state) {
+function execDeferQueue(state: State) {
   const programParent = state.programParent;
   state.defer.assignments.forEach((fn) => {
     const { ids, scope } = fn();
@@ -119,14 +97,75 @@ function execDeferQueue(state) {
   });
 }
 
-export function createState(ast) {
+function walk(
+  node: Node,
+  visitors: Record<
+    string,
+    (node: Node, state: State, ancestors: Array<Node>) => void
+  >,
+  state: State,
+) {
+  const ancestors = [];
+  const call = (node: Node, st: State, override?: string) => {
+    const type = override || node.type;
+    const found = visitors[type];
+    const isNew = node !== ancestors[ancestors.length - 1];
+    const isCurrentNode = type === node.type;
+    const virtualFnKeys = virtualTypesKeys.filter((k) => virtualTypes[k](node));
+    if (isNew) ancestors.push(node);
+    if (isCurrentNode) {
+      state.ancestors.set(node, [...ancestors]);
+      const parentNode = ancestors[ancestors.length - 2];
+      let scope = state.scopes.get(parentNode);
+      if (isProgram(node) || isScope(node, parentNode)) {
+        scope = new Scope(node, scope);
+      }
+      state.scopes.set(node, scope);
+    }
+
+    // 递归调用
+    base[type](node as any, st, call as any);
+    if (found) found(node, st || (ancestors as any), ancestors);
+    if (isCurrentNode && virtualFnKeys.length > 0) {
+      for (const key of virtualFnKeys) {
+        const fn = visitors[key];
+        if (fn) fn(node, st || (ancestors as any), ancestors);
+      }
+    }
+    if (isNew) ancestors.pop();
+  };
+  call(node, state);
+}
+
+export function getBindingIdentifiers(node: Node): Array<Identifier> {
+  const f = (node) => {
+    if (isIdentifier(node)) {
+      return [node];
+    } else if (isArrayPattern(node)) {
+      // @ts-ignore
+      return node.elements.map((el) => f(el)).flat();
+    } else if (isObjectPattern(node)) {
+      // @ts-ignore
+      return node.properties.map((p) => f(p.value)).flat();
+    } else if (isAssignmentPattern(node)) {
+      return f(node.left);
+    } else if (isRestElement(node)) {
+      return f(node.argument);
+    } else {
+      return [];
+    }
+  };
+  return f(node);
+}
+
+export function createState(ast: Node) {
   const state = {
-    scopes: new WeakMap(),
-    ancestors: new WeakMap(),
+    scopes: new WeakMap<Node, Scope>(),
+    ancestors: new WeakMap<Node, Array<Node>>(),
     defer: {
-      references: new Set(),
-      assignments: new Set(),
-      constantViolations: new Set(),
+      references: new Set() as References,
+      assignments: new Set() as Assignments,
+      constantViolations: new Set() as ConstantViolations,
     },
 
     get programParent() {
@@ -135,7 +174,7 @@ export function createState(ast) {
 
     getBindingIdentifiers,
 
-    getScopeByAncestors(ancestors) {
+    getScopeByAncestors(ancestors: Array<Node>) {
       let l = ancestors.length;
       while (~--l) {
         const scope = this.scopes.get(ancestors[l]);
@@ -143,34 +182,36 @@ export function createState(ast) {
       }
     },
 
-    getFunctionParent(scope) {
+    getFunctionParent(scope: Scope) {
       return getParentScope(scope, isFunctionParent);
     },
 
-    getProgramParent(scope) {
+    getProgramParent(scope: Scope) {
       scope = getParentScope(scope, isProgram);
       if (scope) return scope;
-      throw new Error("Couldn't find a Program");
+      // prettier-ignore
+      throw new Error('Couldn\'t find a Program');
     },
 
-    getBlockParent(scope) {
+    getBlockParent(scope: Scope) {
       scope = getParentScope(scope, isBlockParent);
       if (scope) return scope;
       throw new Error(
-        "We couldn't find a BlockStatement, For, Switch, Function, Loop or Program...",
+        // prettier-ignore
+        'We couldn\'t find a BlockStatement, For, Switch, Function, Loop or Program...',
       );
     },
 
-    isReferenced(ancestors) {
+    isReferenced(ancestors: Array<Node>) {
       const l = ancestors.length;
       return isReferenced(ancestors[l - 1], ancestors[l - 2], ancestors[l - 3]);
     },
 
-    remove(ancestors) {
+    remove(ancestors: Array<Node>) {
       this.replaceWith(null, ancestors);
     },
 
-    replaceWith(replacement, ancestors) {
+    replaceWith(replacement: Node, ancestors: Array<Node>) {
       const l = ancestors.length;
       const node = ancestors[l - 1];
       if (node === replacement) return;

@@ -1,8 +1,8 @@
 const startByUrl = async (entry) => {
+  const runtime = new VirtualModule.Runtime();
   const base = new URL('./base/script/', location.href).href;
   entry = new URL(entry, base).href;
-  const execCode = await VirtualModule.startByUrl(entry);
-  await execCode();
+  await runtime.importByUrl(entry);
   return new Promise(setTimeout);
 };
 

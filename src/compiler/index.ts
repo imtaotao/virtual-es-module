@@ -1,8 +1,23 @@
-import { Parser } from 'acorn';
 import { ancestor } from 'acorn-walk';
 import { generate } from 'escodegen';
-import { runtime } from '../runtime';
-import { createState } from './state';
+import { Parser, Node as AcornNode } from 'acorn';
+import { transformUrl, haveSourcemap } from '../utils';
+import type {
+  Node,
+  Program,
+  Identifier,
+  Expression,
+  MetaProperty,
+  CallExpression,
+  MemberExpression,
+  VariableDeclaration,
+  ExportDefaultDeclaration,
+  ImportSpecifier,
+  ImportExpression,
+  ImportDeclaration,
+  ExportAllDeclaration,
+  ExportNamedDeclaration,
+} from 'estree';
 import {
   isIdentifier,
   isVariableDeclaration,
@@ -17,63 +32,112 @@ import {
   identifier,
   callExpression,
   objectProperty,
-  blockStatement,
   objectExpression,
   memberExpression,
+  arrowFunctionExpression,
   variableDeclarator,
   variableDeclaration,
-  expressionStatement,
-  functionDeclaration,
-  arrowFunctionExpression,
 } from './generated';
+import type { Scope } from './scope';
+import { mergeSourcemap } from './mergeMap';
+import { State, createState } from './state';
+import { Runtime, ModuleResource } from '../runtime';
+
+type ImportInfoData = (
+  | ReturnType<Compiler['getImportInformation']>
+  | ReturnType<Compiler['getImportInformationBySource']>
+) & {
+  moduleName: string;
+};
+
+type ImportTransformNode = ReturnType<Compiler['generateImportTransformNode']>;
+
+interface CompilerOptions {
+  code: string;
+  storeId: string;
+  filename: string;
+  runtime: Runtime;
+}
+
+export interface Output {
+  map: string;
+  code: string;
+}
 
 export class Compiler {
   static keys = {
-    __VIRTUAL_IMPORT__: '__VIRTUAL_IMPORT__',
-    __VIRTUAL_EXPORT__: '__VIRTUAL_EXPORT__',
-    __VIRTUAL_DEFAULT__: '__VIRTUAL_DEFAULT__',
-    __VIRTUAL_WRAPPER__: '__VIRTUAL_WRAPPER__',
-    __VIRTUAL_NAMESPACE__: '__VIRTUAL_NAMESPACE__',
-    __VIRTUAL_IMPORT_META__: '__VIRTUAL_IMPORT_META__',
-    __VIRTUAL_DYNAMIC_IMPORT__: '__VIRTUAL_DYNAMIC_IMPORT__',
+    __GARFISH_IMPORT__: '__GARFISH_IMPORT__',
+    __GARFISH_EXPORT__: '__GARFISH_EXPORT__',
+    __GARFISH_DEFAULT__: '__GARFISH_DEFAULT__',
+    __GARFISH_WRAPPER__: '__GARFISH_WRAPPER__',
+    __GARFISH_NAMESPACE__: '__GARFISH_NAMESPACE__',
+    __GARFISH_IMPORT_META__: '__GARFISH_IMPORT_META__',
+    __GARFISH_DYNAMIC_IMPORT__: '__GARFISH_DYNAMIC_IMPORT__',
   };
 
-  constructor(opts) {
-    this.opts = opts;
-    this.moduleCount = 0;
-    this.importInfos = [];
-    this.exportInfos = [];
-    this.deferQueue = {
-      removes: new Set(),
-      replaces: new Set(),
-      importChecks: new Set(),
-      identifierRefs: new Set(),
-      exportNamespaces: new Set(),
-    };
-    this.consumed = false;
+  private ast: Program;
+  private state: ReturnType<typeof createState>;
+
+  private moduleCount = 0;
+  private consumed = false;
+  private importInfos: Array<{
+    data: ImportInfoData;
+    transformNode: ImportTransformNode;
+  }> = [];
+  private exportInfos: Array<{
+    name: string;
+    refNode: Identifier | CallExpression | MemberExpression;
+  }> = [];
+  private deferQueue = {
+    removes: new Set<() => void>(),
+    replaces: new Set<() => void>(),
+    importChecks: new Set<() => void>(),
+    identifierRefs: new Set<() => void>(),
+    exportNamespaces: new Set<{
+      moduleId: string;
+      namespace: string | undefined;
+      fn: (names: Array<string>) => void;
+    }>(),
+  };
+
+  public options: CompilerOptions;
+  public sourcemapComment: string;
+
+  constructor(options: CompilerOptions) {
+    this.options = options;
     this.ast = this.parse();
     this.state = createState(this.ast);
   }
 
-  parse() {
+  private parse() {
     const parser = new Parser(
       {
         locations: true,
         sourceType: 'module',
         ecmaVersion: 'latest',
-        sourceFile: this.opts.filename,
+        sourceFile: this.options.filename,
+        onComment: (isBlock, text) => this.onParseComment(isBlock, text),
       },
-      this.opts.code,
+      this.options.code,
     );
     try {
-      return parser.parse();
+      return parser.parse() as unknown as Program;
     } catch (e) {
-      e.message += `(${this.opts.filename})`;
+      e.message += `(${this.options.filename})`;
       throw e;
     }
   }
 
-  checkImportNames(imports, moduleId) {
+  private onParseComment(isBlock: boolean, text: string) {
+    if (haveSourcemap(text)) {
+      this.sourcemapComment = text;
+    }
+  }
+
+  private checkImportNames(
+    imports: ImportInfoData['imports'],
+    moduleId: string,
+  ) {
     const exports = this.getChildModuleExports(moduleId);
     if (exports) {
       imports.forEach((item) => {
@@ -81,26 +145,28 @@ export class Compiler {
         const checkName = item.isDefault ? 'default' : item.name;
         if (!exports.includes(checkName)) {
           throw SyntaxError(
-            `(${this.opts.filename}): The module '${moduleId}' does not provide an export named '${checkName}'`,
+            `(${this.options.filename}): The module '${moduleId}' does not provide an export named '${checkName}'`,
           );
         }
       });
     }
   }
 
-  getChildModuleExports(moduleId) {
-    const storeId = runtime.transformUrl(this.opts.storeId, moduleId);
-    const output = runtime.store.resources[storeId];
+  private getChildModuleExports(moduleId: string) {
+    const storeId = transformUrl(this.options.storeId, moduleId);
+    const output = this.options.runtime.resources[storeId] as ModuleResource;
     return output ? output.exports : null;
   }
 
-  getImportInformation(node) {
+  private getImportInformation(node: ImportDeclaration) {
     const imports = node.specifiers.map((n) => {
       const isDefault = isImportDefaultSpecifier(n);
       const isNamespace = isImportNamespaceSpecifier(n);
       const isSpecial = isDefault || isNamespace;
       const alias = isSpecial ? null : n.local.name;
-      const name = isSpecial ? n.local.name : n.imported.name;
+      const name = isSpecial
+        ? n.local.name
+        : (n as ImportSpecifier).imported.name;
       return {
         name,
         isDefault,
@@ -108,47 +174,55 @@ export class Compiler {
         alias: alias === name ? null : alias,
       };
     });
+
     return {
       imports,
       isExport: false,
-      moduleId: node.source.value,
+      moduleId: node.source.value as string,
     };
   }
 
-  getImportInformationBySource(node) {
-    const imports = (node.specifiers || []).map((n) => {
-      const alias = n.exported.name;
-      const name = n.local.name;
-      return {
-        name,
-        alias: alias === name ? null : alias,
-      };
-    });
+  private getImportInformationBySource(
+    node: ExportNamedDeclaration | ExportAllDeclaration,
+  ) {
+    const imports = ((node as ExportNamedDeclaration).specifiers || []).map(
+      (n) => {
+        const alias = n.exported.name;
+        const name = n.local.name;
+        return {
+          name,
+          alias: alias === name ? null : alias,
+        };
+      },
+    );
+
     return {
       imports,
       isExport: true,
-      moduleId: node.source.value,
+      moduleId: node.source.value as string,
     };
   }
 
-  generateImportTransformNode(moduleName, moduleId) {
+  private generateImportTransformNode(moduleName: string, moduleId: string) {
     const varName = identifier(moduleName);
     const varExpr = callExpression(
-      identifier(Compiler.keys.__VIRTUAL_IMPORT__),
+      identifier(Compiler.keys.__GARFISH_IMPORT__),
       [literal(moduleId)],
     );
     const varNode = variableDeclarator(varName, varExpr);
     return variableDeclaration('const', [varNode]);
   }
 
-  generateIdentifierTransformNode(nameOrInfo) {
+  private generateIdentifierTransformNode(
+    nameOrInfo: string | ReturnType<Compiler['findIndexInData']>,
+  ) {
     let info;
     if (typeof nameOrInfo === 'string') {
       for (const { data } of this.importInfos) {
         if (!data.isExport) {
-          const res = this.findIndexInData(nameOrInfo, data);
-          if (res) {
-            info = res;
+          const result = this.findIndexInData(nameOrInfo, data);
+          if (result) {
+            info = result;
             break;
           }
         }
@@ -161,7 +235,7 @@ export class Compiler {
       const { i, data } = info;
       const item = data.imports[i];
       if (item.isNamespace) {
-        return callExpression(identifier(Compiler.keys.__VIRTUAL_NAMESPACE__), [
+        return callExpression(identifier(Compiler.keys.__GARFISH_NAMESPACE__), [
           identifier(data.moduleName),
         ]);
       } else {
@@ -174,7 +248,7 @@ export class Compiler {
     }
   }
 
-  generateVirtualModuleSystem() {
+  private generateVirtualModuleSystem() {
     const exportNodes = this.exportInfos.map(({ name, refNode }) => {
       return objectProperty(
         identifier(name),
@@ -182,35 +256,16 @@ export class Compiler {
       );
     });
     const exportCallExpression = callExpression(
-      identifier(Compiler.keys.__VIRTUAL_EXPORT__),
+      identifier(Compiler.keys.__GARFISH_EXPORT__),
       [objectExpression(exportNodes)],
     );
     this.ast.body.unshift(
-      exportCallExpression,
+      exportCallExpression as any,
       ...new Set(this.importInfos.map((val) => val.transformNode)),
     );
   }
 
-  generateWrapperFunction() {
-    const params = [
-      Compiler.keys.__VIRTUAL_IMPORT__,
-      Compiler.keys.__VIRTUAL_EXPORT__,
-      Compiler.keys.__VIRTUAL_NAMESPACE__,
-      Compiler.keys.__VIRTUAL_IMPORT_META__,
-      Compiler.keys.__VIRTUAL_DYNAMIC_IMPORT__,
-    ].map((key) => identifier(key));
-    const id = identifier(Compiler.keys.__VIRTUAL_WRAPPER__);
-    const directive = expressionStatement(literal('use strict'), 'use strict');
-    this.ast.body = [
-      functionDeclaration(
-        id,
-        params,
-        blockStatement([directive, ...this.ast.body]),
-      ),
-    ];
-  }
-
-  findIndexInData(refName, data) {
+  private findIndexInData(refName: string, data: ImportInfoData) {
     for (let i = 0; i < data.imports.length; i++) {
       const { name, alias } = data.imports[i];
       if (refName === alias || refName === name) {
@@ -219,7 +274,7 @@ export class Compiler {
     }
   }
 
-  findImportInfo(moduleId) {
+  private findImportInfo(moduleId: string): [string?, VariableDeclaration?] {
     for (const { data, transformNode } of this.importInfos) {
       if (data.moduleId === moduleId) {
         return [data.moduleName, transformNode];
@@ -228,7 +283,7 @@ export class Compiler {
     return [];
   }
 
-  isReferencedModuleVariable(scope, node) {
+  private isReferencedModuleVariable(scope: Scope, node: Identifier) {
     const u = () =>
       Object.keys(scope.bindings).some((key) => {
         const { kind, references, constantViolations } = scope.bindings[key];
@@ -245,9 +300,13 @@ export class Compiler {
 
   // 1. export { a as default };
   // 2. export { default as x } from 'module';
-  processExportSpecifiers(node, state, ancestors) {
+  private processExportSpecifiers(
+    node: ExportNamedDeclaration,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     if (node.source) {
-      const moduleId = node.source.value;
+      const moduleId = node.source.value as string;
       const data = this.getImportInformationBySource(node);
       let [moduleName, transformNode] = this.findImportInfo(moduleId);
 
@@ -255,13 +314,18 @@ export class Compiler {
         moduleName = `__m${this.moduleCount++}__`;
         transformNode = this.generateImportTransformNode(moduleName, moduleId);
       }
-      data.moduleName = moduleName;
-      this.importInfos.push({ data, transformNode });
+
+      (data as ImportInfoData).moduleName = moduleName;
+      this.importInfos.push({ data: data as ImportInfoData, transformNode });
       this.deferQueue.importChecks.add(() =>
         this.checkImportNames(data.imports, moduleId),
       );
+
       node.specifiers.forEach((n) => {
-        const useInfo = this.findIndexInData(n.local.name, data);
+        const useInfo = this.findIndexInData(
+          n.local.name,
+          data as ImportInfoData,
+        );
         const refNode = this.generateIdentifierTransformNode(useInfo);
         this.exportInfos.push({ refNode, name: n.exported.name });
       });
@@ -279,7 +343,11 @@ export class Compiler {
 
   // 1. export default 1;
   // 2. export const a = 1;
-  processExportNamedDeclaration(node, state, ancestors) {
+  private processExportNamedDeclaration(
+    node: ExportNamedDeclaration | ExportDefaultDeclaration,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     const isDefault = isExportDefaultDeclaration(node);
     const nodes = isVariableDeclaration(node.declaration)
       ? node.declaration.declarations
@@ -289,7 +357,7 @@ export class Compiler {
       let name, refNode;
       if (isDefault) {
         name = 'default';
-        refNode = identifier(Compiler.keys.__VIRTUAL_DEFAULT__);
+        refNode = identifier(Compiler.keys.__GARFISH_DEFAULT__);
       } else {
         name = isIdentifier(node) ? node.name : node.id.name;
         refNode = identifier(name);
@@ -300,8 +368,11 @@ export class Compiler {
     if (isDefault) {
       this.deferQueue.replaces.add(() => {
         // 此时 declaration 可能已经被替换过了
-        const varName = identifier(Compiler.keys.__VIRTUAL_DEFAULT__);
-        const varNode = variableDeclarator(varName, node.declaration);
+        const varName = identifier(Compiler.keys.__GARFISH_DEFAULT__);
+        const varNode = variableDeclarator(
+          varName,
+          node.declaration as Expression,
+        );
         state.replaceWith(variableDeclaration('const', [varNode]), ancestors);
       });
     } else if (isIdentifier(node.declaration)) {
@@ -315,18 +386,24 @@ export class Compiler {
 
   // 1. export * from 'module';
   // 2. export * as x from 'module';
-  processExportAllDeclaration(node, state, ancestors) {
-    const moduleId = node.source.value;
+  private processExportAllDeclaration(
+    node: ExportAllDeclaration,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
+    const namespace = node.exported?.name;
+    const moduleId = node.source.value as string;
     const data = this.getImportInformationBySource(node);
-    const namespace = node.exported && node.exported.name;
     let [moduleName, transformNode] = this.findImportInfo(moduleId);
 
     if (!moduleName) {
       moduleName = `__m${this.moduleCount++}__`;
       transformNode = this.generateImportTransformNode(moduleName, moduleId);
     }
-    data.moduleName = moduleName;
-    this.importInfos.push({ data, transformNode });
+
+    (data as ImportInfoData).moduleName = moduleName;
+    this.importInfos.push({ data: data as ImportInfoData, transformNode });
+
     this.deferQueue.removes.add(() => state.remove(ancestors));
     this.deferQueue.exportNamespaces.add({
       moduleId,
@@ -336,7 +413,7 @@ export class Compiler {
           let refNode;
           if (name === namespace) {
             refNode = callExpression(
-              identifier(Compiler.keys.__VIRTUAL_NAMESPACE__),
+              identifier(Compiler.keys.__GARFISH_NAMESPACE__),
               [identifier(moduleName)],
             );
           } else {
@@ -352,7 +429,11 @@ export class Compiler {
   }
 
   // 处理所有的 export
-  exportDeclarationVisitor(node, state, ancestors) {
+  private exportDeclarationVisitor(
+    node: any,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     if (node.declaration) {
       this.processExportNamedDeclaration(node, state, [...ancestors]);
     } else if (node.specifiers) {
@@ -363,7 +444,11 @@ export class Compiler {
   }
 
   // 处理所有用到 esm 的引用
-  identifierVisitor(node, state, ancestors) {
+  private identifierVisitor(
+    node: Identifier,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     const parent = ancestors[ancestors.length - 2];
     if (isExportSpecifier(parent)) return;
     const scope = state.getScopeByAncestors(ancestors);
@@ -380,9 +465,13 @@ export class Compiler {
   }
 
   // Static import expression
-  importDeclarationVisitor(node, state, ancestors) {
+  private importDeclarationVisitor(
+    node: ImportDeclaration,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     ancestors = [...ancestors];
-    const moduleId = node.source.value;
+    const moduleId = node.source.value as string;
     const data = this.getImportInformation(node);
     let [moduleName, transformNode] = this.findImportInfo(moduleId);
 
@@ -390,8 +479,10 @@ export class Compiler {
       moduleName = `__m${this.moduleCount++}__`;
       transformNode = this.generateImportTransformNode(moduleName, moduleId);
     }
-    data.moduleName = moduleName;
-    this.importInfos.push({ data, transformNode });
+
+    (data as ImportInfoData).moduleName = moduleName;
+    this.importInfos.push({ data: data as ImportInfoData, transformNode });
+
     this.deferQueue.removes.add(() => state.remove(ancestors));
     this.deferQueue.importChecks.add(() =>
       this.checkImportNames(data.imports, moduleId),
@@ -399,30 +490,38 @@ export class Compiler {
   }
 
   // Dynamic import expression
-  importExpressionVisitor(node, state, ancestors) {
+  private importExpressionVisitor(
+    node: ImportExpression,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     const replacement = callExpression(
-      identifier(Compiler.keys.__VIRTUAL_DYNAMIC_IMPORT__),
+      identifier(Compiler.keys.__GARFISH_DYNAMIC_IMPORT__),
       [node.source],
     );
     state.replaceWith(replacement, ancestors);
   }
 
   // `import.meta`
-  importMetaVisitor(node, state, ancestors) {
+  private importMetaVisitor(
+    node: MetaProperty,
+    state: State,
+    ancestors: Array<Node>,
+  ) {
     if (node.meta.name === 'import') {
       const replacement = memberExpression(
-        identifier(Compiler.keys.__VIRTUAL_IMPORT_META__),
+        identifier(Compiler.keys.__GARFISH_IMPORT_META__),
         node.property,
       );
       state.replaceWith(replacement, ancestors);
     }
   }
-  
-  generateCode() {
+
+  private async generateCode() {
     const nameCounts = {};
     const getExports = ({ namespace, moduleId }) => {
       return namespace
-        ? [namespace]
+        ? [namespace as string]
         : this.getChildModuleExports(moduleId) || [];
     };
 
@@ -450,16 +549,16 @@ export class Compiler {
     this.deferQueue.identifierRefs.forEach((fn) => fn());
     this.deferQueue.replaces.forEach((fn) => fn());
     this.deferQueue.removes.forEach((fn) => fn());
-
-    // 生成转换后的代码
     this.generateVirtualModuleSystem();
-    this.generateWrapperFunction();
 
-    return generate(this.ast, {
+    const output = generate(this.ast, {
       sourceMapWithCode: true,
-      sourceMap: this.opts.filename,
-      sourceContent: this.opts.code,
-    });
+      sourceMap: this.options.filename,
+      sourceContent: this.options.code,
+    }) as unknown as Output;
+
+    await mergeSourcemap(this, output);
+    return output;
   }
 
   transform() {
@@ -468,26 +567,23 @@ export class Compiler {
     }
     this.consumed = true;
     const that = this;
-    const pack = (fn) => {
+    const c = (fn) => {
       return function () {
         fn.apply(that, arguments);
       };
     };
 
     ancestor(
-      this.ast,
+      this.ast as unknown as AcornNode,
       {
-        Identifier: pack(this.identifierVisitor),
-        VariablePattern: pack(this.identifierVisitor), // `let x = 1` 和 `x = 2` acorn 给单独区分出来了
-        // import.meta
-        MetaProperty: pack(this.importMetaVisitor),
-        // import
-        ImportDeclaration: pack(this.importDeclarationVisitor),
-        ImportExpression: pack(this.importExpressionVisitor),
-        // export
-        ExportAllDeclaration: pack(this.exportDeclarationVisitor),
-        ExportNamedDeclaration: pack(this.exportDeclarationVisitor),
-        ExportDefaultDeclaration: pack(this.exportDeclarationVisitor),
+        Identifier: c(this.identifierVisitor),
+        VariablePattern: c(this.identifierVisitor),
+        MetaProperty: c(this.importMetaVisitor),
+        ImportExpression: c(this.importExpressionVisitor),
+        ImportDeclaration: c(this.importDeclarationVisitor),
+        ExportAllDeclaration: c(this.exportDeclarationVisitor),
+        ExportNamedDeclaration: c(this.exportDeclarationVisitor),
+        ExportDefaultDeclaration: c(this.exportDeclarationVisitor),
       },
       null,
       this.state,

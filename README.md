@@ -37,22 +37,25 @@ Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 </html>
 ```
 
+
+## API
+
 ```js
-// m.js
-export const a = 1, b = 2;
+import { Runtime } from 'virtual-es-module';
 
-export default class App {};
+const runtime = new Runtime();
+// Start by url
+const module = await runtime.importByUrl('./a.mjs');
+console.log(module);
 
-const c = 3;
-export {
-  c as default,
-}
-
-const d = 4;
-export {
-  d as dd,
-}
+// Start by code
+const module = await runtime.importByCode(`
+  import * as m from './a.mjs';
+  export default 1;
+`);
+console.log(module);
 ```
+
 
 ## Not support
 

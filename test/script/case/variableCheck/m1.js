@@ -4,7 +4,7 @@ import { name } from './m2.js';
 let a = name;
 expect(a).toEqual(['m2']);
 
-expect(() => name = 2).toThrow();
+expect(() => (name = 2)).toThrow();
 
 const b = m2;
 expect(b[Symbol.toStringTag]).toBe('Module');
@@ -28,7 +28,7 @@ expect(`chentao.${m2.name[0]}`).toBe('chentao.m2');
 
 function fn1() {
   expect(name).toEqual(['m2']);
-  expect(() => name = 2).toThrow();
+  expect(() => (name = 2)).toThrow();
 
   (() => {
     ((m2) => {
@@ -50,7 +50,7 @@ function fn1() {
 
   return function () {
     let name = 2;
-    expect(() => name = 3).not.toThrow();
+    expect(() => (name = 3)).not.toThrow();
     expect(name).toBe(3);
 
     const one = () => {
@@ -126,8 +126,7 @@ try {
   expect(name).toEqual(['m2']);
 }
 
-
-for(let { name = 1 } of [{}]) {
+for (let { name = 1 } of [{}]) {
   expect(name).toBe(1);
   name = 2;
   expect(name).toBe(2);
