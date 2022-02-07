@@ -40,7 +40,6 @@ const runtime = new Runtime();
 
 const module = await runtime.importByUrl('./a.mjs');
 console.log(module);
-
 ```
 
 ```js
