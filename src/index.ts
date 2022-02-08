@@ -5,6 +5,8 @@ export { Runtime } from './runtime';
 export const version = __VERSION__;
 
 if (__BROWSER__ && typeof document !== 'undefined') {
+  const typeFlag = 'virtual-module';
+
   function startByUrl(entry) {
     const runtime = new Runtime();
     return runtime.importByUrl(entry);
@@ -15,9 +17,8 @@ if (__BROWSER__ && typeof document !== 'undefined') {
     return runtime.importByCode(originCode, filename, metaUrl);
   }
 
-  async function startByScriptTags(typeFlag) {
-    if (!typeFlag) throw new Error('Missing typeFlag');
-    const execQueue = [];
+  async function startByScriptTags() {
+    const execQueue: Array<() => any> = [];
     const nodes = document.getElementsByTagName('script');
 
     const getFilename = (i) => {
@@ -54,14 +55,12 @@ if (__BROWSER__ && typeof document !== 'undefined') {
     }
   }
 
-  const typeFlag = 'virtual-module';
-
   if (document.readyState === 'complete') {
-    setTimeout(() => startByScriptTags(typeFlag));
+    setTimeout(() => startByScriptTags());
   } else {
     document.addEventListener(
       'DOMContentLoaded',
-      () => startByScriptTags(typeFlag),
+      () => startByScriptTags(),
       false,
     );
   }
