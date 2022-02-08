@@ -4,9 +4,10 @@
 /dev
 /test
 global.d.ts
+tsconfig.json
+rollup.config.js
 .gitignore
 .npmignore
 .prettierrc
-rollup.config.js
 .DS_Store
 yarn.lock
