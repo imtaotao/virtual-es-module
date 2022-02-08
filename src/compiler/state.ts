@@ -125,6 +125,7 @@ function walk(
 
     // 递归调用
     base[type](node as any, st, call as any);
+
     if (found) found(node, st || (ancestors as any), ancestors);
     if (isCurrentNode && virtualFnKeys.length > 0) {
       for (const key of virtualFnKeys) {
@@ -142,7 +143,6 @@ export function getBindingIdentifiers(node: Node): Array<Identifier> {
     if (isIdentifier(node)) {
       return [node];
     } else if (isArrayPattern(node)) {
-      // @ts-ignore
       return node.elements.map((el) => f(el)).flat();
     } else if (isObjectPattern(node)) {
       // @ts-ignore
