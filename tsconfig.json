@@ -16,5 +16,8 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "global.d.ts"
+  ]
 }

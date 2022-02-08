@@ -3,6 +3,7 @@
 /byBabel
 /dev
 /test
+global.d.ts
 .gitignore
 .npmignore
 .prettierrc

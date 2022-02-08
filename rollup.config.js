@@ -35,13 +35,11 @@ packageConfigs.push(
 
 function createReplacePlugin(isProductionBuild, isUmdBuild, isBundlerESMBuild) {
   return replace({
-    __TEST__: false,
     __VERSION__: `"${pkg.version}"`,
     __BROWSER__: Boolean(isUmdBuild),
     __DEV__: isBundlerESMBuild
       ? '(process.env.NODE_ENV !== "production")'
       : !isProductionBuild,
-    'process.env.BABEL_TYPES_8_BREAKING': false,
   });
 }
 

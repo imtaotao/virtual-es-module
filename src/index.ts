@@ -1,8 +1,10 @@
 // 运行时通过 js 来分析，比原生 esModule 的慢 8 倍左右
 import { Runtime } from './runtime';
-export { Runtime } from './runtime';
 
-if (typeof document !== 'undefined') {
+export { Runtime } from './runtime';
+export const version = __VERSION__;
+
+if (__BROWSER__ && typeof document !== 'undefined') {
   function startByUrl(entry) {
     const runtime = new Runtime();
     return runtime.importByUrl(entry);

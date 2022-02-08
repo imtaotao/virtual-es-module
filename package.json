@@ -1,6 +1,6 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "es module polyfill",
   "main": "index.js",
   "types": "dist/src/index.d.ts",
@@ -16,6 +16,11 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
   },
+  "keywords": [
+    "es module",
+    "esModule",
+    "module"
+  ],
   "dependencies": {
     "acorn": "^8.7.0",
     "acorn-walk": "^8.2.0",
