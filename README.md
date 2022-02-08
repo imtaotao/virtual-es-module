@@ -14,7 +14,7 @@ Based on the es module implemented by `acorn`, easy to operate in the `sandbox`.
 <!DOCTYPE html>
 <html lang="en">
 <body>
-  <script src="dist/virtual-esm.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/virtual-es-module/dist/virtual-esm.umd.js"></script>
   <script type="virtual-module">
     import * as _ from 'https://unpkg.com/lodash-es';
     console.log(_);
