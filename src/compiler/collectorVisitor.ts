@@ -115,6 +115,7 @@ export const collectorVisitor = {
     }
   },
 
+  // export 声明中用到的变量也算用到了
   ExportDeclaration(
     node:
       | ExportAllDeclaration
