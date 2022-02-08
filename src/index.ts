@@ -5,53 +5,40 @@ export { Runtime } from './runtime';
 export const version = __VERSION__;
 
 if (__BROWSER__ && typeof document !== 'undefined') {
-  const typeFlag = 'virtual-module';
+  const runtime = new Runtime();
+  const typeTag = 'virtual-module';
 
-  function startByUrl(entry) {
-    const runtime = new Runtime();
-    return runtime.importByUrl(entry);
-  }
-
-  function startByCode(originCode, filename, metaUrl) {
-    const runtime = new Runtime();
-    return runtime.importByCode(originCode, filename, metaUrl);
+  function filename(i) {
+    const url = new URL(location.href);
+    const parts = url.pathname.split('/');
+    const last = parts[parts.length - 1];
+    if (!last || (!last.includes('.') && last !== 'index')) {
+      const file = `index(js:${i})`;
+      if (last === '') {
+        parts[parts.length - 1] = file;
+      } else {
+        parts.push(file);
+      }
+    }
+    url.pathname = parts.join('/');
+    return url.toString();
   }
 
   async function startByScriptTags() {
-    const execQueue: Array<() => any> = [];
     const nodes = document.getElementsByTagName('script');
-
-    const getFilename = (i) => {
-      const url = new URL(location.href);
-      const parts = url.pathname.split('/');
-      const last = parts[parts.length - 1];
-      if (!last || (!last.includes('.') && last !== 'index')) {
-        const file = `index(js:${i})`;
-        if (last === '') {
-          parts[parts.length - 1] = file;
-        } else {
-          parts.push(file);
-        }
-      }
-      url.pathname = parts.join('/');
-      return url.toString();
-    };
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const type = node.getAttribute('type');
-      if (type === typeFlag && !(node as any).loaded) {
+      if (type === typeTag && !(node as any).loaded) {
         (node as any).loaded = true;
         const url = node.getAttribute('src');
         const exec = url
-          ? () => startByUrl(url)
-          : () => startByCode(node.innerHTML, getFilename(i), location.href);
-        execQueue.push(exec);
+          ? () => runtime.importByUrl(url)
+          : () =>
+              runtime.importByCode(node.innerHTML, filename(i), location.href);
+        await exec();
       }
-    }
-
-    for (const exec of execQueue) {
-      await exec();
     }
   }
 
