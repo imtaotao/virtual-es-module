@@ -12,6 +12,7 @@ export interface RuntimeOptions {
   execCode?: (
     output: ModuleResource,
     provider: ReturnType<Runtime['generateProvider']>,
+    exec: typeof evalWithEnv,
   ) => void;
 }
 
@@ -29,7 +30,7 @@ export class Runtime {
     const provider = this.generateProvider(output, memoryModule);
 
     if (this.options.execCode) {
-      this.options.execCode(output, provider);
+      this.options.execCode(output, provider, evalWithEnv);
     } else {
       const sourcemap = `\n//@ sourceMappingURL=${output.map}`;
       const code = `${output.code}\n//${output.storeId}${sourcemap}`;

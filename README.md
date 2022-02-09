@@ -56,6 +56,33 @@ const module = await runtime.importByCode(`
 console.log(module);
 ```
 
+### Custom code execution
+
+```js
+import { Runtime } from 'virtual-es-module';
+
+const runtime = new Runtime({
+  execCode(output, provider, exec) {
+    const sourcemap = `\n//@ sourceMappingURL=${output.map}`;
+    const code = `${output.code}\n//${output.storeId}${sourcemap}`;
+
+    exec(
+      code,
+      {
+        ...provider,
+        // Inject environment variables
+        require(name) {
+          // return ...
+        },
+      },
+    );
+  }
+});
+
+const module = await runtime.importByUrl('./a.mjs');
+console.log(module);
+```
+
 ## Not support
 
 The code executed by eval cannot be converted by this scheme.
