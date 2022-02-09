@@ -1,5 +1,5 @@
+const runtime = new VirtualModule.Runtime();
 const startByUrl = async (entry) => {
-  const runtime = new VirtualModule.Runtime();
   const base = new URL('./base/script/', location.href).href;
   entry = new URL(entry, base).href;
   await runtime.importByUrl(entry);

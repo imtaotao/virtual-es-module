@@ -4,7 +4,7 @@ import { Runtime } from './runtime';
 export { Runtime } from './runtime';
 export const version = __VERSION__;
 
-if (__BROWSER__ && typeof document !== 'undefined') {
+if (__BROWSER__) {
   const runtime = new Runtime();
   const typeTag = 'virtual-module';
 
