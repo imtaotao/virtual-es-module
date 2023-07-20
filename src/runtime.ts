@@ -116,7 +116,7 @@ export class Runtime {
       filename: storeId,
     });
 
-    const { imports, exports, generateCode } = compiler.transform();
+    const { imports, generateCode } = compiler.transform();
     await Promise.all(
       imports.map(({ moduleId }) => {
         const curStoreId = transformUrl(storeId, moduleId);
@@ -131,7 +131,6 @@ export class Runtime {
     output.map = await toBase64(output.map);
     (output as ModuleResource).storeId = storeId;
     (output as ModuleResource).realUrl = baseRealUrl;
-    (output as ModuleResource).exports = exports;
     return output as ModuleResource;
   }
 

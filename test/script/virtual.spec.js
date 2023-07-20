@@ -24,6 +24,10 @@ describe('Virtual import', () => {
     await startByUrl('./case/exportNamespace/m1.js');
   });
 
+  it('export all', async () => {
+    await startByUrl('./case/exportAll/m1.js');
+  });
+
   it('import meta', async () => {
     await startByUrl('./case/importMeta/m1.js');
   });

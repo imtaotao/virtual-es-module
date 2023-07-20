@@ -16,6 +16,10 @@ describe('Native import', () => {
     await import('./case/exportNamespace/m1.js');
   });
 
+  it('export all', async () => {
+    await import('./case/exportAll/m1.js');
+  });
+
   it('import meta', async () => {
     await import('./case/importMeta/m1.js');
   });

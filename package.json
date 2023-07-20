@@ -1,6 +1,6 @@
 {
   "name": "virtual-es-module",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "es module polyfill",
   "main": "index.js",
   "types": "dist/src/index.d.ts",
